@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap');
 
 /* Reset and variables */
-:host {
+:host, html, body {
     --bg-dark: rgba(8, 8, 12, 0.92);
     --border-cyan: #00f0ff;
     --border-magenta: #ff0055;
@@ -26,9 +26,9 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: var(--bg-dark);
-    border: 2px solid var(--border-cyan);
-    box-shadow: var(--shadow-box-cyan);
+    background: var(--bg-dark, #08080c);
+    border: 2px solid var(--border-cyan, #00f0ff);
+    box-shadow: var(--shadow-box-cyan, 0 0 15px rgba(0, 240, 255, 0.25));
     cursor: pointer;
     z-index: 999999;
     display: flex;
@@ -38,8 +38,8 @@
     font-family: 'Orbitron', monospace;
     font-size: 11px;
     font-weight: bold;
-    color: var(--border-cyan);
-    text-shadow: var(--text-glow-cyan);
+    color: var(--border-cyan, #00f0ff);
+    text-shadow: var(--text-glow-cyan, 0 0 8px rgba(0, 240, 255, 0.6));
     user-select: none;
 }
 

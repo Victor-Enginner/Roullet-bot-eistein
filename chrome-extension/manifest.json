@@ -27,7 +27,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "einstein_hologram.png"
+        "einstein_hologram.png",
+        "hud.css"
       ],
       "matches": [
         "<all_urls>"
