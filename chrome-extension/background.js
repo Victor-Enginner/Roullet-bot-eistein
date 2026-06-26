@@ -5,13 +5,13 @@ chrome.action.onClicked.addListener((tab) => {
         chrome.tabs.sendMessage(tab.id, { action: "toggleHUD" }).catch(err => {
             console.log("Falha ao comunicar com o content script. Injetando dinamicamente...");
             
-            // Injeta o CSS e JS em tempo de execução
+            // Injeta o CSS e JS em tempo de execução em todas as frames (inclusive iframes do jogo)
             chrome.scripting.executeScript({
-                target: { tabId: tab.id },
+                target: { tabId: tab.id, allFrames: true },
                 files: ["socket.io.min.js", "content.js"]
             }).then(() => {
                 chrome.scripting.insertCSS({
-                    target: { tabId: tab.id },
+                    target: { tabId: tab.id, allFrames: true },
                     files: ["hud.css"]
                 });
                 console.log("Injetado com sucesso! Abrindo HUD...");
