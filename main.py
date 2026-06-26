@@ -41,7 +41,8 @@ def send_signal_to_bridge(
     dealer: str = "Default",
     is_protection: bool = False,
     attempt: int = 0,
-    reset: bool = False
+    reset: bool = False,
+    outcome: str = ""
 ):
     """Envia o sinal estruturado para o bridge local (porta 4000)"""
     import requests
@@ -57,6 +58,7 @@ def send_signal_to_bridge(
         "is_protection": is_protection,
         "attempt": attempt,
         "reset": reset,
+        "outcome": outcome,
         "timestamp": time.time()
     }
     try:
@@ -219,7 +221,8 @@ def run_bot():
                         protection="",
                         leitura="",
                         confidence=0.0,
-                        reset=True
+                        reset=True,
+                        outcome="win"
                     )
                     bot.enviar_evento(result, msg, imediato=True)
 
@@ -276,7 +279,8 @@ def run_bot():
                         protection="",
                         leitura="",
                         confidence=0.0,
-                        reset=True
+                        reset=True,
+                        outcome="loss"
                     )
                     bot.enviar_evento("LOSS", msg, imediato=True)
 

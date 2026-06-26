@@ -207,6 +207,98 @@
         }
     }
 
+    // --- Web Audio API Synth Sound Generator ---
+    let audioCtx = null;
+    function getAudioContext() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+        }
+        return audioCtx;
+    }
+
+    function playSynthSound(type) {
+        try {
+            const ctx = getAudioContext();
+            const now = ctx.currentTime;
+            
+            if (type === "signal") {
+                // Cyberpunk Bootup Chime (rising high-pitched tones)
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc1.type = "sine";
+                osc2.type = "triangle";
+                
+                osc1.frequency.setValueAtTime(587.33, now); // D5
+                osc1.frequency.setValueAtTime(880.00, now + 0.15); // A5
+                
+                osc2.frequency.setValueAtTime(587.33, now);
+                osc2.frequency.setValueAtTime(880.00, now + 0.15);
+                
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+                
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.45);
+                osc2.stop(now + 0.45);
+            } 
+            else if (type === "win") {
+                // Win Chime (rapid major arpeggio - satisfying arcade sound)
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, index) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.type = "sine";
+                    osc.frequency.setValueAtTime(freq, now + (index * 0.08));
+                    
+                    gain.gain.setValueAtTime(0.12, now + (index * 0.08));
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + (index * 0.08) + 0.4);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc.start(now + (index * 0.08));
+                    osc.stop(now + (index * 0.08) + 0.4);
+                });
+            }
+            else if (type === "protection") {
+                // Warning Alert Pulse (descending warning tones)
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = "sawtooth";
+                const filter = ctx.createBiquadFilter();
+                filter.type = "lowpass";
+                filter.frequency.setValueAtTime(600, now);
+                
+                osc.frequency.setValueAtTime(392.00, now); // G4
+                osc.frequency.setValueAtTime(293.66, now + 0.2); // D4
+                
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + 0.5);
+            }
+        } catch (e) {
+            console.log("Falha ao tocar sintetizador de som:", e);
+        }
+    }
+
     // Update UI elements based on received signals
     function processSignal(signal) {
         console.log("🎯 Sinal recebido no HUD:", signal);
@@ -229,6 +321,7 @@
         if (signal.strategy) {
             // New active entry signal
             logToConsole(`Entrada confirmada! Estratégia: ${signal.strategy}`, "success");
+            playSynthSound("signal"); // Play signal alert sound
             
             if (entryVal) entryVal.textContent = signal.strategy;
             if (leituraVal) leituraVal.textContent = signal.leitura || "Leitura de IA ativa.";
@@ -262,6 +355,7 @@
         } else if (signal.is_protection) {
             // Martingale protection round
             logToConsole(`Rodada de Cobertura / Martingale ativa!`, "warn");
+            playSynthSound("protection"); // Play warning chime
             
             if (entryVal) entryVal.textContent = "COBERTURA ACT";
             if (leituraVal) leituraVal.textContent = "Aguardando confirmação do green.";
@@ -273,7 +367,16 @@
             }
         } else {
             // Reset state (Win/Loss or normal monitoring)
-            logToConsole("Mesa normalizada. Monitorando...");
+            if (signal.reset) {
+                if (signal.outcome === "win") {
+                    logToConsole("Green confirmado! Parabéns!", "success");
+                    playSynthSound("win"); // Play satisfy arcade chime
+                } else if (signal.outcome === "loss") {
+                    logToConsole("Loss registrado. Pausando entradas...", "error");
+                } else {
+                    logToConsole("Mesa normalizada. Monitorando...");
+                }
+            }
             resetSignalUI();
         }
     }

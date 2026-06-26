@@ -50,7 +50,8 @@ def send_signal_to_bridge(
     dealer: str = "Default",
     is_protection: bool = False,
     attempt: int = 0,
-    reset: bool = False
+    reset: bool = False,
+    outcome: str = ""
 ):
     """Envia o sinal estruturado para o bridge local (porta 4000)"""
     bridge_url = "http://localhost:4000/api/webhook/signal"
@@ -65,6 +66,7 @@ def send_signal_to_bridge(
         "is_protection": is_protection,
         "attempt": attempt,
         "reset": reset,
+        "outcome": outcome,
         "timestamp": time.time()
     }
     try:
@@ -209,7 +211,8 @@ def main():
                             protection="",
                             leitura="",
                             confidence=0.0,
-                            reset=True
+                            reset=True,
+                            outcome="win"
                         )
                         bot.enviar_imediato(msg)
 
@@ -272,7 +275,8 @@ def main():
                             protection="",
                             leitura="",
                             confidence=0.0,
-                            reset=True
+                            reset=True,
+                            outcome="loss"
                         )
                         bot.enviar_imediato(msg)
 
