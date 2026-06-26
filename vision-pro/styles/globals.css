@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 5 5 5;
+    --foreground: 220 220 220;
+    --card: 10 10 10;
+    --card-foreground: 220 220 220;
+    --primary: 120 255 41;
+    --primary-foreground: 5 5 5;
+    --secondary: 45 45 45;
+    --secondary-foreground: 220 220 220;
+    --muted: 15 15 15;
+    --muted-foreground: 200 200 200;
+    --accent: 255 215 0;
+    --accent-foreground: 5 5 5;
+    --border: 25 25 25;
+    --input: 15 15 15;
+    --ring: 120 255 41;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 5 5 5;
+    --foreground: 220 220 220;
+    --card: 10 10 10;
+    --card-foreground: 220 220 220;
+    --primary: 120 255 41;
+    --primary-foreground: 5 5 5;
+    --secondary: 45 45 45;
+    --secondary-foreground: 220 220 220;
+    --muted: 15 15 15;
+    --muted-foreground: 200 200 200;
+    --accent: 255 215 0;
+    --accent-foreground: 5 5 5;
+    --border: 25 25 25;
+    --input: 15 15 15;
+    --ring: 120 255 41;
+    --radius: 0.5rem;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.25s;
+    animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+  }
+}
+
+
+@layer components {
+  .pulse-glow {
+    @apply animate-pulse;
+    box-shadow: 0 0 20px theme(colors.primary);
+  }
+  
+  .neon-text {
+    @apply text-primary;
+    text-shadow: 0 0 10px currentColor;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-primary/20;
+  }
+}
+
+@layer utilities {
+  .text-shadow-glow {
+    text-shadow: 0 0 20px theme(colors.primary);
+  }
+  
+  .bg-gradient-dark {
+    background: linear-gradient(135deg, rgba(var(--background), 1) 0%, rgba(var(--muted), 1) 100%);
+  }
+}

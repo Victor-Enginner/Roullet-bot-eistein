@@ -1,0 +1,53 @@
+[
+  {
+    "session_id": "profile_stable_low_terminals",
+    "terminals_freq": [
+      15,
+      8,
+      5,
+      8,
+      12,
+      10,
+      8,
+      10,
+      12,
+      12
+    ],
+    "avg_win_rate": 0.88,
+    "description": "Mercado estável com dominância de terminais baixos (T0, T1, T4)"
+  },
+  {
+    "session_id": "profile_high_entropy_messy",
+    "terminals_freq": [
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10
+    ],
+    "avg_win_rate": 0.65,
+    "description": "Alta entropia, distribuição totalmente uniforme e caótica de terminais"
+  },
+  {
+    "session_id": "profile_cluster_geometric",
+    "terminals_freq": [
+      5,
+      12,
+      15,
+      12,
+      8,
+      5,
+      12,
+      15,
+      8,
+      8
+    ],
+    "avg_win_rate": 0.82,
+    "description": "Sessão com forte atração geométrica nos setores do zero e vizinhos"
+  }
+]

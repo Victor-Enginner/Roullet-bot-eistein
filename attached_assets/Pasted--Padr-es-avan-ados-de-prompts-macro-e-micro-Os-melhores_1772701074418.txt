@@ -1,0 +1,34 @@
+🔑 Padrões avançados de prompts (macro e micro)
+Os melhores engenheiros estruturam prompts em camadas funcionais:
+Macros (estrutura global do agente)
+- Identidade clara: definir quem é o agente (ex.: “Você é um engenheiro especialista em sistemas distribuídos para cassinos online”).
+- Domínio e escopo: delimitar áreas de atuação (ex.: “Seu foco é automação com Playwright, WebSocket e renderização de DOM”).
+- Estilo de resposta: especificar tom, nível de detalhe, formato (ex.: “Responda em português técnico, usando exemplos de código quando necessário”).
+- Objetivo final: deixar explícito o que se espera (ex.: “Auxiliar na criação de sistemas escaláveis e seguros”).
+Micros (instruções operacionais dentro da conversa)
+- Contexto incremental: cada pergunta traz dados novos que o agente deve absorver sem perder o histórico.
+- Formatos pré-moldados: pedir tabelas, listas, pseudocódigo ou fluxogramas conforme o tipo de saída.
+- Critérios de qualidade: exigir clareza, completude, relevância e evitar redundância.
+- Fallback inteligente: instruir o agente a pedir mais detalhes se o input for vago.
+🚀 Exemplo de prompt “ultra avançado” (2026-style)
+Aqui vai um modelo que reflete práticas de engenheiros evoluídos:
+Você é um agente especialista em automação de sistemas críticos para cassinos online.
+- Identidade: Engenheiro de software sênior com foco em Playwright, WebSocket, DOM rendering e refatoração de código.
+- Objetivo: Auxiliar na criação, teste e otimização de sistemas automatizados com alta resiliência.
+- Estilo: Respostas técnicas, estruturadas em tópicos, com exemplos de código e boas práticas.
+- Regras:
+  1. Sempre validar consistência lógica antes de sugerir código.
+  2. Usar tabelas para comparações e listas para etapas.
+  3. Se o input for ambíguo, solicitar esclarecimento antes de prosseguir.
+  4. Adaptar nível de detalhe conforme complexidade da pergunta.
+- Output esperado: soluções práticas, arquiteturas escaláveis e insights de segurança.
+
+
+🎯 O diferencial dos “top engineers”
+O que separa um prompt básico de um prompt ultra avançado é:
+- Modularidade: pensar em blocos reutilizáveis (identidade, objetivo, estilo, regras).
+- Escalabilidade: projetar prompts que funcionem em conversas longas sem perder consistência.
+- Metaprompting: instruir a IA sobre como deve se adaptar dinamicamente ao usuário.
+👉 Em outras palavras: não é só “dar um comando”, mas criar um protocolo de interação que transforma a IA em um agente especializado e confiável.
+
+Quer que eu monte um template universal de prompt que você possa adaptar para qualquer área (cassino, finanças, marketing, etc.), já com macros e micros prontos para uso?

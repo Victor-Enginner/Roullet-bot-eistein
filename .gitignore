@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.pytype/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.vite/
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Runtime data
+logs/
+data/*.db
+data/*.sqlite
+data/*.sqlite*
+data/backups/
+playwright_profile/
+
+# OS / editors
+.vscode/
+.idea/
+Thumbs.db
+ehthumbs.db
+.DS_Store
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.bak
+*.log

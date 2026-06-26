@@ -1,0 +1,219 @@
+You are a senior fullstack AI engineer specialized in automation and zero manual setup.
+
+Your task is to transform this Roulette Monitor project into a fully automated system called:
+
+RADAR DO GREEN
+
+GOALS:
+
+Fix backend connection
+Auto start python server
+Auto detect environment
+Improve UI trading style
+Add Telegram signal engine
+Add voice alerts
+Make production ready structure
+
+CRITICAL FIX:
+
+Dashboard shows:
+
+Backend Python offline
+http://localhost:5000
+Execute cd backend && python app.py
+
+This must be solved automatically.
+
+IMPLEMENT:
+
+1 AUTO BACKEND START
+
+Create root script:
+
+start_system.bat
+
+that runs:
+
+cd backend
+start cmd /k python app.py
+
+timeout 3
+
+cd ..
+npm run dev
+
+System must start everything with one click.
+
+2 HEALTH CHECK API
+
+Create endpoint:
+
+/api/health
+
+return:
+
+{
+status:"online",
+system:"RADAR DO GREEN",
+version:"2.0"
+}
+
+3 AUTO RECONNECT
+
+Frontend must:
+
+retry connection every 5 seconds
+
+if offline:
+
+show:
+
+SIMULATION MODE
+
+if online:
+
+switch automatically.
+
+4 TELEGRAM SIGNAL ENGINE
+
+Create:
+
+send_signal()
+
+format:
+
+🚨 RADAR DO GREEN SIGNAL
+
+🎯 Entry:
+Black 2 neighbors
+
+🛡 Protection:
+3 gales
+
+📊 Confidence:
+87%
+
+⏱ Time:
+Live
+
+5 TRADING UI IMPROVEMENTS
+
+Add:
+
+pulse glow animations
+live activity indicator
+confidence meter animation
+signal countdown timer
+win/loss tracker
+
+Style:
+
+dark trading terminal
+neon green accents
+glass panels
+smooth transitions
+
+6 VOICE ALERT SYSTEM
+
+Add:
+
+signal detected sound
+win sound
+loss sound
+priority alert sound
+
+7 PROJECT STRUCTURE
+
+Reorganize:
+
+/frontend
+/backend
+/signals
+/config
+/core
+/scripts
+
+8 AUTO CONFIG FILE
+
+Create:
+
+config.json
+
+{
+telegram_token:"",
+chat_id:"",
+signal_mode:"auto",
+confidence_threshold:70,
+voice_alerts:true
+}
+
+9 SIGNAL ENGINE CORE
+
+Create:
+
+signal_engine.py
+
+functions:
+
+detect_patterns()
+calculate_confidence()
+generate_signal()
+send_telegram()
+
+10 SMART SIGNAL LOGIC
+
+Confidence based on:
+
+last numbers
+sector clustering
+repetition gaps
+green frequency
+wheel zones
+
+Return:
+
+confidence score.
+
+11 ADD BUTTON:
+
+START RADAR
+
+that activates:
+
+monitor
+signal engine
+telegram
+voice alerts
+
+12 ADD DASHBOARD METRICS:
+
+Signals today
+Win rate
+Current streak
+Last signal result
+Profit tracker
+
+13 MAKE SYSTEM PROFESSIONAL
+
+Add:
+
+error logging
+auto restart
+API validation
+structured responses
+
+FINAL GOAL:
+
+Transform this into a SaaS level AI signal dashboard.
+
+OUTPUT:
+
+Return all modified files.
+
+Explain architecture.
+
+No placeholders.
+
+No pseudo code.
+
+Production level only.

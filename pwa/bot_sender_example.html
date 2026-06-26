@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bot Signal Sender Example</title>
+    <style>body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #00ff88; }</style>
+</head>
+<body>
+    <h1>🤖 Bot Signal Sender - WS Test</h1>
+    <p>Server: <span id="status">Disconnected</span></p>
+    <button onclick="sendTestSignal()">Send Test Signal (25, TEST)</button>
+    <button onclick="connectWS()">Connect/Disconnect</button>
+    <pre id="logs"></pre>
+    
+    <script>
+        const WS_URL = 'ws://localhost:8765';
+        const TOKEN = 'win_secret_2024';
+        let ws = null;
+        let connected = false;
+
+        function log(msg) {
+            document.getElementById('logs').textContent += new Date().toLocaleTimeString() + ': ' + msg + '\n';
+            document.getElementById('logs').scrollTop = document.getElementById('logs').scrollHeight;
+            console.log(msg);
+        }
+
+        async function connectWS() {
+            if (connected) {
+                if (ws) ws.close();
+                connected = false;
+                document.getElementById('status').textContent = 'Disconnected';
+                log('Disconnected');
+                return;
+            }
+
+            log('Connecting to ' + WS_URL);
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                log('✅ Client connected');
+                log('🔑 Authenticating...');
+                ws.send(JSON.stringify({type: 'auth', token: TOKEN}));
+            };
+
+            ws.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    log('📨 Response: ' + JSON.stringify(data));
+                    if (data.type === 'auth_ok') {
+                        connected = true;
+                        document.getElementById('status').textContent = 'Connected & Authenticated';
+                        log('✅ Authenticated - Ready to send signals!');
+                    } else if (data.type === 'auth_fail') {
+                        log('❌ Auth failed');
+                    }
+                } catch (err) {
+                    log('Parse error: ' + e.data);
+                }
+            };
+
+            ws.onclose = () => {
+                connected = false;
+                document.getElementById('status').textContent = 'Disconnected';
+                log('🔌 Disconnected');
+            };
+
+            ws.onerror = (e) => log('❌ Error: ' + e);
+        }
+
+        async function sendTestSignal() {
+            if (!connected || !ws) {
+                log('❌ Not connected. Click Connect first.');
+                return;
+            }
+
+            const signal = {
+                type: 'signal',
+                number: 25,
+                strategy: 'TEST'
+            };
+
+            log('🚀 Sending: ' + JSON.stringify(signal));
+            ws.send(JSON.stringify(signal));
+            log('📤 Signal sent!');
+        }
+
+        // Auto-connect on load
+        window.onload = () => setTimeout(connectWS, 1000);
+    </script>
+</body>
+</html>
+

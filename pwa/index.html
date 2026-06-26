@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="WIN Agent">
+  <link rel="manifest" href="manifest.json">
+  <title>WIN Voice Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c26;
+      --border: rgba(255,255,255,0.07); --accent: #00ff88; --accent2: #00ccff;
+      --warn: #ff6b35; --text: #f0f0f0; --muted: rgba(240,240,240,0.45);
+      --mono: 'Space Mono', monospace; --sans: 'Syne', sans-serif;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow: hidden; }
+    body { display: flex; flex-direction: column; height: 100dvh; }
+    header { padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .logo { font-size: 13px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); }
+    .status-pill { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--mono); color: var(--muted); padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #555; transition: background 0.3s; }
+    .status-dot.connected { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .status-dot.connecting { background: var(--warn); animation: pulse 1s infinite; }
+    .status-dot.error { background: #ff4444; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; gap: 24px; overflow: hidden; }
+    .orb-container { position: relative; width: 180px; height: 180px; flex-shrink: 0; }
+    .orb-ring { position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--accent); opacity: 0; transform: scale(1); transition: opacity 0.3s; }
+    .orb-ring:nth-child(2) { animation-delay: 0.4s; }
+    .orb-ring:nth-child(3) { animation-delay: 0.8s; }
+    .speaking .orb-ring { opacity: 1; animation: ripple 2s ease-out infinite; }
+    @keyframes ripple { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.8); opacity: 0; } }
+    .orb { position: absolute; inset: 20px; border-radius: 50%; background: var(--surface2); border: 2px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: border-color 0.3s, background 0.3s; }
+    .orb-speaking { border-color: var(--accent) !important; background: rgba(0,255,136,0.06) !important; }
+    .orb-label { font-size: 10px; font-family: var(--mono); color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+    .signal-card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; flex-shrink: 0; }
+    .signal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .signal-tag { font-size: 10px; font-family: var(--mono); color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; }
+    .signal-time { font-size: 11px; font-family: var(--mono); color: var(--muted); }
+    .signal-number { font-size: 48px; font-weight: 800; font-family: var(--mono); line-height: 1; margin-bottom: 8px; color: var(--accent2); }
+    .signal-strategy { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .signal-strategy strong { color: var(--text); font-weight: 600; }
+    .history-section { width: 100%; max-width: 380px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .history-label { font-size: 10px; font-family: var(--mono); color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 8px; flex-shrink: 0; }
+    .history-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; }
+    .history-list::-webkit-scrollbar { display: none; }
+    .history-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { transform: translateX(-10px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .h-num { font-family: var(--mono); font-weight: 700; font-size: 18px; width: 32px; text-align: center; color: var(--accent2); }
+    .h-detail { flex: 1; font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .h-result { font-size: 11px; font-family: var(--mono); padding: 2px 8px; border-radius: 6px; }
+    .h-result.win { background: rgba(0,255,136,0.12); color: var(--accent); }
+    .h-result.loss { background: rgba(255,68,68,0.12); color: #ff6666; }
+    .h-result.pending { background: rgba(255,255,255,0.06); color: var(--muted); }
+    footer { padding: 12px 20px 20px; flex-shrink: 0; border-top: 1px solid var(--border); }
+    .controls { display: flex; align-items: center; gap: 10px; }
+    .btn { flex: 1; height: 48px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: rgba(0,255,136,0.1); border-color: rgba(0,255,136,0.3); color: var(--accent); }
+    .btn-danger { background: rgba(255,68,68,0.1); border-color: rgba(255,68,68,0.3); color: #ff6666; }
+    .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 18px; font-size: 13px; font-family: var(--mono); opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; z-index: 100; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: flex-end; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal { width: 100%; background: var(--surface); border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 24px 20px 40px; transform: translateY(100%); transition: transform 0.3s; border: 1px solid var(--border); }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-title { font-size: 16px; font-weight: 800; margin-bottom: 20px; color: var(--text); }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 11px; font-family: var(--mono); color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.1em; }
+    .field input, .field select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; }
+    .field input:focus { border-color: rgba(0,255,136,0.4); }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .toggle-label { font-size: 13px; color: var(--text); }
+    .toggle-sub { font-size: 11px; font-family: var(--mono); color: var(--muted); margin-top: 2px; }
+    .toggle { width: 44px; height: 24px; background: var(--surface2); border-radius: 12px; border: 1px solid var(--border); cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; }
+    .toggle.on { background: rgba(0,255,136,0.25); border-color: var(--accent); }
+    .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; background: var(--muted); border-radius: 50%; top: 2px; left: 2px; transition: transform 0.2s, background 0.2s; }
+    .toggle.on::after { transform: translateX(20px); background: var(--accent); }
+    .save-btn { width: 100%; height: 50px; background: var(--accent); color: #000; border: none; border-radius: 12px; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.1em; cursor: pointer; margin-top: 20px; }
+    .bars { display: flex; align-items: flex-end; gap: 3px; height: 20px; }
+    .bar { width: 3px; background: var(--accent); border-radius: 2px; opacity: 0.4; transition: height 0.15s; min-height: 3px; }
+    .speaking .bar { opacity: 1; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">WIN Agent</div>
+  <div class="status-pill">
+    <div class="status-dot" id="dot"></div>
+    <span id="status-text">desconectado
+
+</span>
+  </div>
+</header>
+<main>
+  <div class="orb-container" id="orb-wrap">
+    <div class="orb-ring"></div>
+    <div class="orb-ring"></div>
+    <div class="orb-ring"></div>
+    <div class="orb" id="orb" onclick="toggleMute()">
+      <div class="bars" id="bars">
+        <div class="bar" style="height:8px"></div>
+        <div class="bar" style="height:14px"></div>
+        <div class="bar" style="height:6px"></div>
+        <div class="bar" style="height:18px"></div>
+        <div class="bar" style="height:10px"></div>
+        <div class="bar" style="height:16px"></div>
+        <div class="bar" style="height:8px"></div>
+      </div>
+      <div class="orb-label" id="orb-label">aguardando</div>
+    </div>
+  </div>
+  <div class="signal-card">
+    <div class="signal-header">
+      <span class="signal-tag">ultimo sinal</span>
+      <span class="signal-time" id="last-time">--</span>
+    </div>
+    <div class="signal-number" id="last-number">--</div>
+    <div class="signal-strategy" id="last-strategy">Nenhum sinal recebido ainda.</div>
+  </div>
+  <div class="history-section">
+    <div class="history-label">historico</div>
+    <div class="history-list" id="history-list">
+      <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;font-family:var(--mono)">aguardando sinais...</div>
+    </div>
+  </div>
+</main>
+<footer>
+  <div class="controls">
+    <button class="btn" onclick="openConfig()">config</button>
+    <button class="btn btn-primary" id="connect-btn" onclick="toggleConnect()">
+      <span id="connect-label">conectar</span>
+    </button>
+    <button class="btn" onclick="toggleMute()">
+      <span id="mute-icon">voz on</span>
+    </button>
+  </div>
+</footer>
+<div class="toast" id="toast"></div>
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">Configuracoes</div>
+    <div class="field">
+      <label>URL do servidor WebSocket</label>
+      <input type="url" id="cfg-url" placeholder="ws://localhost:8765">
+    </div>
+    <div class="field">
+      <label>Token de acesso</label>
+      <input type="password" id="cfg-token" placeholder="win_secret_2024">
+    </div>
+    <div class="field">
+      <label>Velocidade da voz</label>
+      <select id="cfg-rate">
+        <option value="0.85">Lenta</option>
+        <option value="1.0" selected>Normal</option>
+        <option value="1.2">Rapida</option>
+        <option value="1.4">Muito rapida</option>
+      </select>
+    </div>
+    <div class="toggle-row">
+      <div><div class="toggle-label">Voz automatica</div><div class="toggle-sub">fala ao receber sinal</div></div>
+      <div class="toggle on" id="toggle-auto" onclick="toggleSetting('auto')"></div>
+    </div>
+    <button class="save-btn" onclick="saveConfig()">SALVAR</button>
+  </div>
+</div>
+<script>
+let cfg = {
+  url: localStorage.getItem('win_url') || 'ws://localhost:8765',
+  token: localStorage.getItem('win_token') || 'win_secret_2024',
+  rate: parseFloat(localStorage.getItem('win_rate') || '1.0'),
+  auto: localStorage.getItem('win_auto') !== 'false',
+};
+let ws = null, connected = false, muted = false, speaking = false, history = [];
+const dot = document.getElementById('dot');
+const statusText = document.getElementById('status-text');
+const connectLabel = document.getElementById('connect-label');
+const orbWrap = document.getElementById('orb-wrap');
+const orb = document.getElementById('orb');
+const orbLabel = document.getElementById('orb-label');
+
+function setStatus(s, text) { dot.className = 'status-dot ' + s; statusText.textContent = text; }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+function setSpeaking(val) {
+  speaking = val;
+  if (val) { orbWrap.classList.add('speaking'); orb.classList.add('orb-speaking'); orbLabel.textContent = 'falando...'; animateBars(true); }
+  else { orbWrap.classList.remove('speaking'); orb.classList.remove('orb-speaking'); orbLabel.textContent = connected ? 'ao vivo' : 'aguardando'; animateBars(false); }
+}
+function animateBars(active) {
+  const barEls = document.querySelectorAll('.bar');
+  if (!active) { barEls.forEach((b,i) => b.style.height = [8,14,6,18,10,16,8][i]+'px'); return; }
+  function frame() {
+    if (!speaking) return;
+    barEls.forEach(b => b.style.height = (4+Math.random()*20)+'px');
+    requestAnimationFrame(() => setTimeout(frame, 80));
+  }
+  frame();
+}
+function speak(text) {
+  if (muted || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'pt-BR'; u.rate = cfg.rate; u.pitch = 0.9; u.volume = 1.0;
+  const voices = window.speechSynthesis.getVoices();
+  const v = voices.find(v => v.lang.startsWith('pt') && v.localService) || voices.find(v => v.lang.startsWith('pt'));
+  if (v) u.voice = v;
+  u.onstart = () => setSpeaking(true);
+  u.onend = () => setSpeaking(false);
+  u.onerror = () => setSpeaking(false);
+  window.speechSynthesis.speak(u);
+}
+function processSignal(data) {
+  const now = new Date().toLocaleTimeString('pt-BR');
+  document.getElementById('last-number').textContent = data.number;
+  document.getElementById('last-time').textContent = now;
+  document.getElementById('last-strategy').innerHTML = (data.strategy||'').replace(/T\d+/g,'<strong>$&</strong>');
+  history.unshift({num:data.number, strategy:data.strategy||'', time:now, result:'pending'});
+  if (history.length > 20) history.pop();
+  renderHistory();
+  if (cfg.auto && !muted) {
+    const parts = ['Novo numero: '+data.number+'.'];
+    const m = (data.strategy||'').match(/T\d+(?:\s*e\s*T\d+)?/i);
+    if (m) parts.push('Entrada: '+m[0]+'.');
+    parts.push('Ate 3 protecoes. Sem insistencia.');
+    speak(parts.join(' '));
+  }
+}
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  list.innerHTML = history.map(h => `
+    <div class="history-item">
+      <div class="h-num">${h.num}</div>
+      <div class="h-detail">${h.strategy.substring(0,50)}${h.strategy.length>50?'...':''}<br><span style="font-size:10px;font-family:var(--mono)">${h.time}</span></div>
+      <div class="h-result ${h.result}">${h.result==='pending'?'...':h.result==='win'?'WIN':'LOSS'}</div>
+    </div>`).join('');
+}
+function connect() {
+  if (ws) { ws.close(); ws = null; }
+  setStatus('connecting', 'conectando...');
+  connectLabel.textContent = 'parar';
+  try {
+    ws = new WebSocket(cfg.url);
+    ws.onopen = () => {
+      connected = true; setStatus('connected', 'conectado');
+      connectLabel.textContent = 'desconectar'; orbLabel.textContent = 'ao vivo';
+      showToast('conectado!');
+      ws.send(JSON.stringify({type:'auth', token:cfg.token}));
+    };
+    ws.onmessage = (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        
+        // Log para debug: toda vez que um sinal for recebido
+        console.log('Sinal recebido do servidor:', d);
+        
+        if (d.type==='signal') processSignal(d);
+        else if (d.type==='result') { const h=history.find(x=>x.num===d.number&&x.result==='pending'); if(h){h.result=d.result;renderHistory();} }
+        else if (d.type==='ping') ws.send(JSON.stringify({type:'pong'}));
+      } catch(e){}
+    };
+    ws.onclose = () => {
+      connected = false; ws = null;
+      setStatus('', 'desconectado'); connectLabel.textContent = 'reconectar'; orbLabel.textContent = 'aguardando'; setSpeaking(false);
+    };
+    ws.onerror = () => { setStatus('error','erro'); showToast('falha na conexao'); };
+  } catch(e) { setStatus('error','url invalida'); showToast('URL invalida'); }
+}
+function disconnect() {
+  if (ws) { ws.close(); ws = null; }
+  connected = false; setStatus('','desconectado'); connectLabel.textContent='conectar'; orbLabel.textContent='aguardando';
+}
+function toggleConnect() { if (ws && ws.readyState===WebSocket.OPEN) disconnect(); else connect(); }
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('mute-icon').textContent = muted ? 'voz off' : 'voz on';
+  if (muted) { window.speechSynthesis.cancel(); setSpeaking(false); }
+  showToast(muted ? 'Voz desativada' : 'Voz ativada');
+}
+function openConfig() {
+  document.getElementById('cfg-url').value = cfg.url;
+  document.getElementById('cfg-token').value = cfg.token;
+  document.getElementById('cfg-rate').value = cfg.rate;
+  document.getElementById('toggle-auto').classList.toggle('on', cfg.auto);
+  document.getElementById('modal').classList.add('open');
+}
+function closeConfig() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click', function(e){ if(e.target===this) closeConfig(); });
+function toggleSetting(k) { cfg[k]=!cfg[k]; document.getElementById('toggle-'+k).classList.toggle('on',cfg[k]); }
+function saveConfig() {
+  cfg.url = document.getElementById('cfg-url').value.trim();
+  cfg.token = document.getElementById('cfg-token').value.trim();
+  cfg.rate = parseFloat(document.getElementById('cfg-rate').value);
+  localStorage.setItem('win_url',cfg.url); localStorage.setItem('win_token',cfg.token);
+  localStorage.setItem('win_rate',cfg.rate); localStorage.setItem('win_auto',cfg.auto);
+  closeConfig(); showToast('salvo!');
+  if (ws && ws.readyState===WebSocket.OPEN) { disconnect(); setTimeout(connect,500); }
+}
+window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+window.speechSynthesis.getVoices();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

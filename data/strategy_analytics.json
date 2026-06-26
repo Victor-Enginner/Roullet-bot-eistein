@@ -1,0 +1,158 @@
+{
+    "24": {
+        "executions": 12,
+        "wins_entry": 10,
+        "wins_protection": 2,
+        "losses": 0
+    },
+    "32": {
+        "executions": 18,
+        "wins_entry": 16,
+        "wins_protection": 2,
+        "losses": 0
+    },
+    "4": {
+        "executions": 13,
+        "wins_entry": 8,
+        "wins_protection": 4,
+        "losses": 1
+    },
+    "30": {
+        "executions": 9,
+        "wins_entry": 9,
+        "wins_protection": 0,
+        "losses": 0
+    },
+    "1": {
+        "executions": 14,
+        "wins_entry": 11,
+        "wins_protection": 3,
+        "losses": 0
+    },
+    "18": {
+        "executions": 15,
+        "wins_entry": 15,
+        "wins_protection": 0,
+        "losses": 0
+    },
+    "3": {
+        "executions": 10,
+        "wins_entry": 8,
+        "wins_protection": 2,
+        "losses": 0
+    },
+    "31": {
+        "executions": 17,
+        "wins_entry": 15,
+        "wins_protection": 2,
+        "losses": 0
+    },
+    "35": {
+        "executions": 12,
+        "wins_entry": 10,
+        "wins_protection": 1,
+        "losses": 1
+    },
+    "20": {
+        "executions": 16,
+        "wins_entry": 13,
+        "wins_protection": 3,
+        "losses": 0
+    },
+    "10": {
+        "executions": 14,
+        "wins_entry": 11,
+        "wins_protection": 3,
+        "losses": 0
+    },
+    "19": {
+        "executions": 16,
+        "wins_entry": 12,
+        "wins_protection": 2,
+        "losses": 2
+    },
+    "14": {
+        "executions": 12,
+        "wins_entry": 7,
+        "wins_protection": 5,
+        "losses": 0
+    },
+    "2": {
+        "executions": 9,
+        "wins_entry": 6,
+        "wins_protection": 3,
+        "losses": 0
+    },
+    "21": {
+        "executions": 6,
+        "wins_entry": 6,
+        "wins_protection": 0,
+        "losses": 0
+    },
+    "13": {
+        "executions": 8,
+        "wins_entry": 5,
+        "wins_protection": 3,
+        "losses": 0
+    },
+    "23": {
+        "executions": 9,
+        "wins_entry": 8,
+        "wins_protection": 1,
+        "losses": 0
+    },
+    "34": {
+        "executions": 8,
+        "wins_entry": 7,
+        "wins_protection": 1,
+        "losses": 0
+    },
+    "29": {
+        "executions": 12,
+        "wins_entry": 11,
+        "wins_protection": 1,
+        "losses": 0
+    },
+    "16": {
+        "executions": 10,
+        "wins_entry": 10,
+        "wins_protection": 0,
+        "losses": 0
+    },
+    "36": {
+        "executions": 7,
+        "wins_entry": 7,
+        "wins_protection": 0,
+        "losses": 0
+    },
+    "15": {
+        "executions": 11,
+        "wins_entry": 9,
+        "wins_protection": 2,
+        "losses": 0
+    },
+    "12": {
+        "executions": 15,
+        "wins_entry": 14,
+        "wins_protection": 1,
+        "losses": 0
+    },
+    "25": {
+        "executions": 6,
+        "wins_entry": 5,
+        "wins_protection": 1,
+        "losses": 0
+    },
+    "26": {
+        "executions": 7,
+        "wins_entry": 6,
+        "wins_protection": 1,
+        "losses": 0
+    },
+    "6": {
+        "executions": 12,
+        "wins_entry": 9,
+        "wins_protection": 3,
+        "losses": 0
+    }
+}

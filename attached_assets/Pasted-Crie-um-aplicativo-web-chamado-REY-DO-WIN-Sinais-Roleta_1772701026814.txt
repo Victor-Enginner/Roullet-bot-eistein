@@ -1,0 +1,61 @@
+Crie um aplicativo web chamado "REY_DO_WIN | Sinais Roleta Brasileira".
+
+1. Tela Inicial (Login/Cadastro):
+   - Grupo central com logo 🎰 ROLETA BRASILEIRA.
+   - Campos: Email, Senha.
+   - Botão "Entrar".
+   - Link "Criar Conta".
+   - Workflow: se login válido → redirecionar para Dashboard.
+   - Workflow: se criar conta → salvar usuário no banco Bubble (User).
+
+2. Dashboard Principal (após login):
+   - Cabeçalho fixo:
+     • Texto: 🎰 ROLETA BRASILEIRA
+     • Subtexto: 🚦 SINALZINHO GRATUITO 🚦
+     • Botões: "Jogue com responsabilidade", "Suporte Humanizado", "Saques Ilimitados"
+   - Menu lateral com ícones:
+     • Home → Sinais em tempo real
+     • Entrada → Possível Entrada
+     • Alerta → Manipulação
+     • Relatório → Consolidado
+     • Chat → Suporte
+     • Config → Conta
+
+3. Aba "Sinais em tempo real":
+   - Repeating Group conectado ao endpoint /api/sinais.
+   - Campos: Último número, Horário (GMT-3), Status (Green ✅ / Red ❌).
+   - Estilo: fundo escuro, texto branco, destaque em verde/vermelho.
+
+4. Aba "Possível Entrada":
+   - Texto grande: "Possível Entrada".
+   - Campo dinâmico que mostra o sinal atual do bot.
+   - Botão "Abrir Roleta" → link ROULETTE_LINK.
+
+5. Aba "Alertas de Manipulação":
+   - Repeating Group conectado ao endpoint /api/alertas.
+   - Mensagens formatadas:
+     • ⚠️ Sequência detectada (4x)
+     • 🚨 MANIPULAÇÃO DETECTADA (5x ou mais)
+   - Workflow: atualizar em tempo real.
+
+6. Aba "Relatório Consolidado":
+   - Grupo conectado ao endpoint /api/relatorio.
+   - Campos:
+     • Total de giros
+     • Greens ✅
+     • Reds ❌
+     • Último número
+   - Estilo: card com emojis 📊.
+
+7. Aba "Suporte / Estratégias":
+   - Texto: "Quer entender a estratégia?"
+   - Botão → STRATEGY_LINK (Telegram ou página explicativa).
+
+8. Aba "Configurações da Conta":
+   - Campos editáveis: Nome, Email, Senha.
+   - Botão "Salvar".
+   - Workflow: atualizar dados do usuário.
+
+9. Rodapé:
+   - Texto: "Powered by REY_DO_WIN Bot".
+   - Links de afiliado (ROULETTE_LINK, STRATEGY_LINK).

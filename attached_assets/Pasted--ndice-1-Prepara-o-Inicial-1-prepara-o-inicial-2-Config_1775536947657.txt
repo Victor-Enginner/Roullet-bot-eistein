@@ -1,0 +1,138 @@
+## 📋 Índice 1. [Preparação Inicial](#1-preparação-inicial) 2. [Configurar Telegram](#2-configurar-telegram) 3. [Instalar Frontend](#3-instalar-frontend) 4. [Instalar Backend](#4-instalar-backend) 5. [Modo Híbrido - Selenium](#5-modo-híbrido---selenium) 6. [Testar Tudo](#6-testar-tudo) 7. [FAQ](#7-faq) --- ## 1. Preparação Inicial ### ✅ Checklist de Pré-requisitos Antes de começar, certifique-se de ter instalado: - [ ] **Node.js** versão 18 ou superior   - Testar: node --version deve mostrar v18.0.0 ou superior   - Download: https://nodejs.org/ - [ ] **Python** versão 3.9 ou superior   - Testar: python --version ou python3 --version   - Download: https://www.python.org/ - [ ] **Google Chrome** instalado   - Qualquer versão recente serve - [ ] **Telegram** instalado no celular   - Download: https://telegram.org/ --- ## 2. Configurar Telegram ### 2.1 Criar o Bot 1. **Abra o Telegram** no celular ou desktop 2. **Procure por @BotFather** na busca 3. **Clique em INICIAR** quando abrir a conversa 4. **Envie o comando:**    
+/newbot
+5. **Escolha um nome** para seu bot (exemplo: "Meu Monitor de Roleta") 6. **Escolha um username** (deve terminar com "bot", exemplo: "meu_monitor_roleta_bot") 7. **Copie o TOKEN** fornecido    - Formato: 1234567890:ABCdefGHIjklMNOpqrsTUVwxyz    - ⚠️ **IMPORTANTE**: Guarde este token com segurança! ### 2.2 Obter o Chat ID 1. **Procure por @userinfobot** no Telegram 2. **Clique em INICIAR** 3. **Copie o número** que ele mostrar    - Será algo como: 123456789    - Este é o seu **Chat ID** ### 2.3 Testar o Bot 1. **Procure seu bot** pelo username que você criou 2. **Clique em INICIAR** para começar a conversa --- ## 3. Instalar Frontend ### 3.1 Preparar o Projeto
+bash
+# 1. Clone ou baixe o projeto
+# (se já baixou, pule este passo)
+
+# 2. Entre na pasta do projeto
+cd monitor-de-roleta
+
+# 3. Instale as dependências
+npm install
+### 3.2 Configurar Variáveis de Ambiente
+bash
+# 1. Copie o arquivo de exemplo
+cp .env.example .env
+
+# 2. Edite o .env (opcional nesta etapa)
+# Por padrão, já está configurado para localhost:5000
+### 3.3 Iniciar o Frontend
+bash
+# Inicia o servidor de desenvolvimento
+npm run dev
+**Resultado esperado:**
+VITE v6.x.x  ready in xxx ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+✅ **Acesse http://localhost:5173** no navegador para ver o dashboard! --- ## 4. Instalar Backend ### 4.1 Método Automático (Recomendado) **Windows:**
+cmd
+cd backend
+run.bat
+**Mac/Linux:**
+bash
+cd backend
+chmod +x run.sh
+./run.sh
+### 4.2 Método Manual
+bash
+# 1. Entre na pasta backend
+cd backend
+
+# 2. Crie um ambiente virtual
+python -m venv venv
+
+# 3. Ative o ambiente virtual
+
+# Windows:
+venv\Scripts\activate
+
+# Mac/Linux:
+source venv/bin/activate
+
+# 4. Instale as dependências
+pip install -r requirements.txt
+
+# 5. Inicie o servidor
+python app.py
+**Resultado esperado:**
+============================================================
+🎰 MONITOR DE ROLETA - Backend Python
+============================================================
+🌐 Servidor: http://localhost:5000
+📡 API disponível em: http://localhost:5000/api
+============================================================
+ * Running on http://0.0.0.0:5000
+✅ **Backend está rodando!** --- ## 5. Modo Híbrido - Selenium ### 5.1 Instalar Selenium (Opcional) Se quiser usar detecção real (não simulação):
+bash
+# No ambiente virtual do backend
+pip install selenium webdriver-manager
+### 5.2 Abrir Chrome com Debug **Método Automático:** **Windows:**
+cmd
+cd backend
+start_chrome.bat
+**Mac/Linux:**
+bash
+cd backend
+chmod +x start_chrome.sh
+./start_chrome.sh
+**Método Manual:** **Windows:**
+cmd
+chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\chrome-debug"
+**Mac:**
+bash
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --user-data-dir="/tmp/chrome-debug"
+**Linux:**
+bash
+google-chrome --remote-debugging-port=9222 --user-data-dir="/tmp/chrome-debug"
+### 5.3 Navegar até a Roleta 1. **No Chrome que acabou de abrir**, acesse a URL da roleta 2. **Faça login** se necessário 3. **Navegue até a tela da roleta** 4. **Deixe a página aberta** ### 5.4 Editar o Seletor CSS 1. **Pressione F12** para abrir DevTools 2. **Clique no ícone de seletor** (Ctrl+Shift+C) 3. **Clique no número exibido** na roleta 4. **No DevTools**, clique com botão direito no elemento → Copy → Copy selector 5. **Cole o seletor** na aba **Configurações** do dashboard ### 5.5 Iniciar Monitor Real
+bash
+# No terminal do backend
+python monitor_real.py
+--- ## 6. Testar Tudo ### 6.1 Verificar Serviços | Serviço | URL | Status Esperado | |---------|-----|-----------------| | Frontend | http://localhost:5173 | Dashboard visível | | Backend | http://localhost:5000/api/ping | {"status": "ok"} | | Chrome Debug | http://localhost:9222 | Página de debug do Chrome | ### 6.2 Testar Conexão com Telegram 1. **Acesse** http://localhost:5173 2. **Vá para a aba** "Configurações" 3. **Cole** o Token do Bot 4. **Cole** o Chat ID 5. **Clique em** "Testar Conexão com Telegram" 6. **Verifique** se recebeu uma mensagem no Telegram ✅ **Se recebeu a mensagem, está tudo certo!** ### 6.3 Salvar e Iniciar 1. **Clique em** "Salvar Configurações" 2. **Volte para** a aba "Monitor" 3. **Clique em** "Iniciar Monitoramento" 4. **Aguarde** os números aparecerem ### 6.4 Modos de Operação **Modo Simulação (Backend offline):** - Números aleatórios gerados a cada 5 segundos - Ideal para testar a interface **Modo Simulação (Backend online):** - Backend gera números aleatórios - Mensagens enviadas ao Telegram **Modo Real (com Selenium):** - Detecta números reais do DOM da roleta - Envia notificações instantâneas --- ## 7. FAQ ### ❓ O backend não inicia **Problema:** Erro ao executar python app.py **Soluções:**
+bash
+# 1. Verifique se está no ambiente virtual
+# Deve aparecer (venv) no início da linha do terminal
+
+# 2. Reinstale as dependências
+pip install --upgrade -r requirements.txt
+
+# 3. Verifique a porta 5000
+# Windows:
+netstat -ano | findstr :5000
+# Mac/Linux:
+lsof -i :5000
+### ❓ Frontend não conecta ao backend **Problema:** "Backend offline - Usando modo simulação" **Soluções:** 1. Verifique se o backend está rodando em http://localhost:5000 2. Teste manualmente: abra http://localhost:5000/api/ping no navegador 3. Verifique o arquivo .env:    
+VITE_API_URL=http://localhost:5000
+4. Reinicie o frontend (npm run dev) ### ❓ Telegram não recebe mensagens **Problema:** "Falha ao testar conexão" **Soluções:** 1. ✅ Verifique se o token está correto (sem espaços extras) 2. ✅ Verifique se o Chat ID está correto 3. ✅ Certifique-se de que iniciou uma conversa com o bot 4. ✅ Teste o token manualmente:    
+bash
+   curl "https://api.telegram.org/bot<SEU_TOKEN>/getMe"
+### ❓ Selenium não conecta ao Chrome **Problema:** Erro ao executar monitor_real.py **Soluções:** 1. ✅ Feche TODOS os Chromes abertos 2. ✅ Abra o Chrome com o comando correto (veja seção 5.2) 3. ✅ Verifique se a porta 9222 está livre:    
+bash
+   # Windows:
+   netstat -ano | findstr :9222
+   # Mac/Linux:
+   lsof -i :9222
+4. ✅ Instale o Selenium corretamente:    
+bash
+   pip install selenium webdriver-manager
+### ❓ Seletor CSS não encontra o número **Problema:** Monitor não detecta números novos **Soluções:** 1. ✅ Verifique se o seletor está correto (use DevTools) 2. ✅ A página pode ter mudado, encontre o novo seletor 3. ✅ Exemplos comuns de seletores:    
+[data-testid="single-result"]
+   .roulette-number
+   #current-number
+   .last-result span
+4. ✅ Adicione prints para debug no monitor_real.py:    
+python
+   print(f"Seletor: {self.number_selector}")
+   print(f"Elementos encontrados: {len(elements)}")
+### ❓ Como usar em produção? **Para deploy em servidor:** 1. **Frontend (Vite):**    
+bash
+   npm run build
+   # Deploy a pasta dist/ para um servidor web ou Vercel/Netlify
+2. **Backend (Flask):**    
+bash
+   # Use gunicorn para produção
+   pip install gunicorn
+   gunicorn -w 4 -b 0.0.0.0:5000 app:app
+3. **Configure CORS e HTTPS** no backend 4. **Use variáveis de ambiente** para credenciais --- ## 🎉 Pronto! Se chegou até aqui, seu Monitor de Roleta está funcionando! ### 📞 Precisa de Ajuda? 1. Revise este guia do início 2. Verifique os logs do backend e frontend 3. Teste cada componente individualmente 4. Consulte o README.md principal ### 🚀 Próximos Passos - [ ] Personalizar mensagens do Telegram - [ ] Adicionar detecção de padrões avançados - [ ] Configurar alertas customizados - [ ] Testar em diferentes cassinos/roletas - [ ] Fazer backup das configurações **Boa sorte e divirta-se! 🎰** e ele é send_message bora fazer um site top Chamado radar do green
