@@ -4,7 +4,8 @@
   "version": "1.0",
   "description": "HUD Cyberpunk de Análise de Roleta em tempo real com IA",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "action": {
     "default_title": "Einstein HUD Toggle"
