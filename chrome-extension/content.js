@@ -328,6 +328,20 @@
         if (signalCard) signalCard.className = "einstein-signal-card";
     }
 
+    // Listen to messages from background service worker
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === "toggleHUD") {
+            if (hudContainer) {
+                if (hudContainer.style.display === "none") {
+                    hudContainer.style.display = "flex";
+                    logToConsole("Painel HUD ativado pelo ícone do Chrome.");
+                } else {
+                    hudContainer.style.display = "none";
+                }
+            }
+        }
+    });
+
     // Initialize extension
     initUI();
     connectSocket();
