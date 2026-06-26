@@ -1,167 +1,91 @@
-# Preset de Estratégias: Super Assertiva
-# Este arquivo serve como a nova área segura para você configurar suas entradas personalizadas.
-# Você pode alterar a "leitura", "entrada" e "cobertura" de qualquer número sem afetar a clássica.
+# Preset de Estratégias: Super Assertiva (Inteligente por Análise de Histórico)
+# Este arquivo implementa o estudo de famílias de terminais, gêmeos e espelhos com verificação contextual.
+import logging
 
-ESTRATEGIAS = {
-    0: {
-        "leitura": "Zona do zero conexão de vizinhos.",
-        "entrada": "8 vizinhos do número 26",
-        "cobertura": "33, 5, 10, 14, 13, 8",
-    },
-    1: {
-        "leitura": "Terminal dominante com continuidade.",
-        "entrada": "T1 e T3 com 1 vizinho",
-        "cobertura": "T4 / T7",
-    },
-    2: {
-        "leitura": "Cluster técnico em terminal baixo.",
-        "entrada": "T4 e T6 com 1 vizinho",
-        "cobertura": "T5 / T2",
-    },
-    3: {
-        "leitura": "Fluxo claro em terminais médios.",
-        "entrada": "T3 e T6 com 1 vizinho",
-        "cobertura": "T7 / T4",
-    },
-    4: {
-        "leitura": "Terminal repetindo padrão anterior.",
-        "entrada": "T4 e T1 com 1 vizinho",
-        "cobertura": "T6 / T8",
-    },
-    5: {
-        "leitura": "Terminal 5 puxando vizinhança.",
-        "entrada": "T5 com 2 vizinhos",
-        "cobertura": "T4 / T7",
-    },
-    6: {
-        "leitura": "Cluster 6 3 9  ativo.",
-        "entrada": "T4 e T3 com 1 vizinho",
-        "cobertura": "T2 / T6 / T9",
-    },
-    7: {},
-    8: {
-        "leitura": "Região Tier com extensão lateral.",
-        "entrada": "Cobrir Tier (7 vizinhos) e 32 (3 vizinhos)",
-        "cobertura": "T1",
-    },
-    9: {},
-    10: {
-        "leitura": "Zero conectando terminais ativos.",
-        "entrada": "T5 e T2 com 1 vizinho",
-        "cobertura": "T0 / T7",
-    },
-    11: {},
-    12: {
-        "leitura": "Terminal 2.",
-        "entrada": "T2 e T4 com 1 vizinho",
-        "cobertura": "T1 / T5",
-    },
-    13: {
-        "leitura": "Terminal dominante em repetição.",
-        "entrada": "T1 e T3 com 1 vizinho",
-        "cobertura": "T2 / T6",
-    },
-    14: {
-        "leitura": "Terminal 4.",
-        "entrada": "T4 e T1 com 1 vizinho",
-        "cobertura": "T2 / T5",
-    },
-    15: {
-        "leitura": "Terminal 5 conectado ao zero.",
-        "entrada": "T5 e T0 com 1 vizinho",
-        "cobertura": "T6 / T4",
-    },
-    16: {
-        "leitura": "Terminal 6.",
-        "entrada": "T3 e T9 com 1 vizinho",
-        "cobertura": "T6 / T8",
-    },
-    17: {},
-    18: {
-        "leitura": "Terminal 8.",
-        "entrada": "T8 e T5 com 1 vizinho",
-        "cobertura": "T4 / T9",
-    },
-    19: {
-        "leitura": "Terminal 9 puxando sequência.",
-        "entrada": "T9 e T6 com 1 vizinho",
-        "cobertura": "T8 / T3",
-    },
-    20: {
-        "leitura": "Zero conectando terminais altos.",
-        "entrada": "T0 e T5 com 1 vizinho",
-        "cobertura": "T2 / T4",
-    },
-    21: {
-        "leitura": "Espelhos em continuidade.",
-        "entrada": "T2 e T3 com 1 vizinho",
-        "cobertura": "12, 21, 13, 31, 23, 32",
-    },
-    22: {},
-    23: {
-        "leitura": "Zero conectado ao terminal 5.",
-        "entrada": "T3 e T6 com 1 vizinho",
-        "cobertura": "T2 / T4",
-    },
-    24: {
-        "leitura": "CAVALO 47.",
-        "entrada": "T4 e T1 com 1 vizinho",
-        "cobertura": "T2 / T5",
-    },
-    25: {
-        "leitura": "Terminal 5 isolado com vizinhança.",
-        "entrada": "T5 e T0 com 1 vizinho",
-        "cobertura": "T1 / T4",
-    },
-    26: {
-        "leitura": "Terminal 6.",
-        "entrada": "T6 e T3 com 1 vizinho",
-        "cobertura": "T2 / T9",
-    },
-    27: {},
-    28: {
-        "leitura": "Sequência técnica ativa.",
-        "entrada": "28 e 13 com 5 vizinhos",
-        "cobertura": "T1 / T6",
-    },
-    29: {
-        "leitura": "Terminal 9 conexão com o zero.",
-        "entrada": "T9 e T0 com 1 vizinho",
-        "cobertura": "T6 / T1",
-    },
-    30: {
-        "leitura": "Terminal 0 fluxo lateral.",
-        "entrada": "T3 e T6 com 1 vizinho",
-        "cobertura": "T4 / T9",
-    },
-    31: {
-        "leitura": "Continuidade de espelhos.",
-        "entrada": "T1 e T3 com 1 vizinho",
-        "cobertura": "T2 / T4",
-    },
-    32: {
-        "leitura": "Continuidade de espelhos.",
-        "entrada": "T1 e T3 com 1 vizinho",
-        "cobertura": "T2 / T5",
-    },
-    33: {
-        "leitura": "Gêmeos ativos.",
-        "entrada": "11 / 22 / 33 / 0 com 3 vizinhos",
-        "cobertura": "17 / 27",
-    },
-    34: {
-        "leitura": "Terminal 4 .",
-        "entrada": "T4 e T2 com 1 vizinho",
-        "cobertura": "T1 / T6",
-    },
-    35: {
-        "leitura": "Terminal 5.",
-        "entrada": "T6 e T3 com 1 vizinho",
-        "cobertura": "T2 / T9",
-    },
-    36: {
-        "leitura": "Terminal 6.",
-        "entrada": "T6 e T8 com 1 vizinho",
-        "cobertura": "T5 / T9",
-    },
-}
+logger = logging.getLogger("strategy.super_assertiva")
+
+# Dicionário estático para compatibilidade retroativa e testes básicos
+ESTRATEGIAS = {i: {} for i in range(37)}
+
+def resolve_strategy(last_number: int, history: list[int] = None) -> dict:
+    """
+    Executa a estratégia baseada na análise de tendência de histórico
+    e priorização de espelhos/gêmeos.
+    """
+    if not history:
+        return {}
+
+    # Certifica-se de que temos o histórico recente para analisar a tendência
+    history_slice = history[-8:]
+    if len(history_slice) < 3:
+        return {}
+
+    # --- 1. ESTRATÉGIA ESPELHOS & GÊMEOS (PRIORIDADE MÁXIMA) ---
+    twins = {11, 22, 33}
+    mirrors = {12, 21, 13, 31, 23, 32}
+    
+    # Se o último número for um espelho ou gêmeo, gera entrada imediata (prioridade)
+    if last_number in twins or last_number in mirrors:
+        logger.info(f"🔮 [Espelhos & Gêmeos] Gatilho confirmado no número base: {last_number}!")
+        return {
+            "leitura": "🚨 ESPELHOS & GÊMEOS ATIVOS: Mesa confirmou leitura de invertidos/gêmeos.",
+            "entrada": "11, 12, 13, 21, 22, 23, 31, 32, 33",
+            "cobertura": "3, 9, 36, 35, 27, 30, 8, 10, 4, 2, 26"
+        }
+
+    # --- 2. ESTRATÉGIA DE FAMÍLIAS DE TERMINAIS ---
+    families = {
+        "3_6_9": {
+            "terminals": {3, 6, 9},
+            "entrada": "3, 6, 9, 13, 16, 19, 23, 26, 29, 33, 36",
+            "cobertura": "15, 32, 27, 18, 22, 8, 31, 35",
+            "leitura": "🚨 FAMÍLIA 3-6-9 ATIVA: Mesa mostrando leitura forte em 3-6-9."
+        },
+        "2_5_8": {
+            "terminals": {2, 5, 8},
+            "entrada": "2, 5, 8, 12, 15, 18, 22, 25, 28, 32, 35",
+            "cobertura": "7, 29, 26, 3, 23, 10, 21, 17",
+            "leitura": "🚨 FAMÍLIA 2-5-8 ATIVA: Leitura confirma padrão 2-5-8."
+        },
+        "6_3_2": {
+            "terminals": {6, 3, 2},
+            "entrada": "6, 3, 2, 16, 13, 12, 26, 23, 22, 36, 33, 32",
+            "cobertura": "11, 15, 21, 31, 35, 27, 9",
+            "leitura": "🚨 FAMÍLIA 6-3-2 ATIVA: Leitura clara em terminais 6-3-2."
+        },
+        "0_5_7": {
+            "terminals": {0, 5, 7},
+            "entrada": "0, 5, 7, 10, 15, 17, 20, 25, 27, 30, 35",
+            "cobertura": "26, 33, 28, 23, 12, 8, 11, 36, 13",
+            "leitura": "🚨 FAMÍLIA 0-5-7 ATIVA: Mesa puxando terminais 0-5-7."
+        }
+    }
+
+    last_terminal = last_number % 10
+    matching_families = []
+
+    # Identifica quais famílias se alinham com o último terminal sorteado
+    for name, config in families.items():
+        if last_terminal in config["terminals"]:
+            # Conta a recorrência dessa família nos últimos 8 giros (tendência de histórico)
+            hits = sum(1 for num in history_slice if (num % 10) in config["terminals"])
+            matching_families.append((name, hits, config))
+
+    if not matching_families:
+        return {}
+
+    # Escolhe a família com maior tendência no histórico
+    matching_families.sort(key=lambda x: x[1], reverse=True)
+    best_family, hits_count, best_config = matching_families[0]
+
+    # Exige que a tendência esteja forte no histórico recente (>= 3 ocorrências nos últimos 8 giros)
+    if hits_count >= 3:
+        logger.info(f"🔥 [Famílias] Gatilho confirmado na família {best_family} ({hits_count} ocorrências no histórico)!")
+        return {
+            "leitura": best_config["leitura"],
+            "entrada": best_config["entrada"],
+            "cobertura": best_config["cobertura"]
+        }
+
+    # Se a mesa não estiver aderente à tendência recente, pula o sinal para segurança
+    return {}

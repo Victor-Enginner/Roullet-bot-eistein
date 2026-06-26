@@ -47,9 +47,23 @@ def get_active_strategy_preset() -> dict:
         from strategy.presets import default_terminals
         return default_terminals.ESTRATEGIAS
 
-def pick_strategy(last_number: int) -> dict:
+def pick_strategy(last_number: int, history: list[int] = None) -> dict:
     """
     Escolhe a estratégia baseada no último número a partir do preset ativo.
+    Suporta resolução dinâmica de contexto/histórico se o preset selecionado for 'super_assertiva'.
     """
+    global ACTIVE_PRESET
+    if ACTIVE_PRESET == "super_assertiva":
+        try:
+            # Importa dinamicamente a lógica inteligente da super_assertiva
+            module = importlib.import_module("strategy.presets.super_assertiva")
+            if hasattr(module, "resolve_strategy"):
+                return module.resolve_strategy(last_number, history)
+        except Exception as e:
+            import logging
+            logging.getLogger("server.agents.strategy").warning(
+                f"Erro ao computar resolve_strategy dinâmico: {e}"
+            )
+            
     estrategias_ativas = get_active_strategy_preset()
     return estrategias_ativas.get(last_number, {})

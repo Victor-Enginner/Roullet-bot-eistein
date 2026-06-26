@@ -65,7 +65,7 @@ def run_engine(
     lógica clássica como fallback.
     """
     analysis = analyze_recent(history)
-    strategy = pick_strategy(base)
+    strategy = pick_strategy(base, history)
     stats = memory_agent.get_stats(base)
 
     # Inicialização do SmartBrain (Evoluções de IA)
