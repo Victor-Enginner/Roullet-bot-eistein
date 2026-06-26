@@ -16,6 +16,8 @@
     // Create and inject CSS reference into shadow DOM
     const cssUrl = chrome.runtime.getURL("hud.css");
     const einsteinImgUrl = chrome.runtime.getURL("einstein_hologram.png");
+    const einsteinThinkingUrl = chrome.runtime.getURL("einstein_thinking.png");
+    const einsteinCelebratingUrl = chrome.runtime.getURL("einstein_celebrating.png");
 
     // Initialize UI
     function initUI() {
@@ -86,9 +88,9 @@
 
                     <!-- Einstein Hologram Overlay -->
                     <div class="einstein-hologram-overlay" id="einsteinHologram">
-                        <div class="einstein-hologram-portrait" style="background-image: url('${einsteinImgUrl}');"></div>
-                        <div class="einstein-hologram-alert">PARADOXO DE EINSTEIN</div>
-                        <div class="einstein-hologram-quote">"Ninguém vence a roleta... exceto nós."</div>
+                        <div class="einstein-hologram-portrait"></div>
+                        <div class="einstein-hologram-alert"></div>
+                        <div class="einstein-hologram-quote"></div>
                     </div>
                 </div>
 
@@ -114,6 +116,9 @@
 
         // Bind events
         bindUIEvents();
+
+        // Inicializa com Einstein pensando
+        setHologramState("thinking");
     }
 
     // Interactive event listeners
@@ -299,6 +304,77 @@
         }
     }
 
+    // Configuração do Holograma Interativo
+    let thinkingInterval = null;
+    const thinkingQuotes = [
+        "Calculando desvio padrão das rodadas...",
+        "Analisando assinatura balística do croupier...",
+        "Processando teoria quântica no cilindro...",
+        "Mapeando setores vizinhos da mesa...",
+        "A imaginação é mais importante que o conhecimento.",
+        "Deus não joga dados... mas nós analisamos a mesa.",
+        "Verificando margens de proteção de risco...",
+        "Avaliando probabilidade residual de acertos...",
+        "Calculando Kelly ótimo para alocação...",
+        "Calculando desvios e distribuições de Poisson...",
+        "Monitorando dispersão estatística..."
+    ];
+
+    function setHologramState(state, customAlert = "", customQuote = "") {
+        const einsteinHologram = shadowRoot.getElementById("einsteinHologram");
+        if (!einsteinHologram) return;
+        
+        const portrait = einsteinHologram.querySelector(".einstein-hologram-portrait");
+        const alertText = einsteinHologram.querySelector(".einstein-hologram-alert");
+        const quoteText = einsteinHologram.querySelector(".einstein-hologram-quote");
+        
+        // Limpa rotações de frases anteriores
+        if (thinkingInterval) {
+            clearInterval(thinkingInterval);
+            thinkingInterval = null;
+        }
+
+        // Reseta classes do overlay e remove cores extras do HUD
+        einsteinHologram.classList.remove("state-thinking", "state-celebrating", "active");
+        if (hudContainer) {
+            hudContainer.classList.remove("glow-yellow");
+        }
+
+        if (state === "thinking") {
+            einsteinHologram.classList.add("state-thinking");
+            if (portrait) portrait.style.backgroundImage = `url('${einsteinThinkingUrl}')`;
+            if (alertText) alertText.textContent = customAlert || "EINSTEIN PROCESSANDO...";
+            
+            const getRandomQuote = () => thinkingQuotes[Math.floor(Math.random() * thinkingQuotes.length)];
+            if (quoteText) quoteText.textContent = customQuote || `"${getRandomQuote()}"`;
+
+            // Configura rotação a cada 4.5 segundos
+            thinkingInterval = setInterval(() => {
+                if (einsteinHologram.classList.contains("state-thinking") && quoteText) {
+                    quoteText.textContent = `"${getRandomQuote()}"`;
+                }
+            }, 4500);
+
+        } else if (state === "celebrating") {
+            einsteinHologram.classList.add("state-celebrating");
+            if (portrait) portrait.style.backgroundImage = `url('${einsteinCelebratingUrl}')`;
+            if (alertText) alertText.textContent = customAlert || "GREEN CONFIRMADO!";
+            if (quoteText) quoteText.textContent = customQuote || '"E=mc² (Lucro = Massa × Consistência²)"';
+            
+            if (hudContainer) hudContainer.className = "einstein-hud-container glow-green";
+        } else if (state === "easter-egg") {
+            einsteinHologram.classList.add("active");
+            if (portrait) portrait.style.backgroundImage = `url('${einsteinImgUrl}')`;
+            if (alertText) alertText.textContent = customAlert || "PARADOXO DE EINSTEIN";
+            if (quoteText) quoteText.textContent = customQuote || '"Ninguém vence a roleta... exceto nós."';
+            if (hudContainer) hudContainer.classList.add("glow-yellow");
+        } else {
+            // Estado oculto (sinal ativo ou cobertura ativa para liberar visão dos dados)
+            if (alertText) alertText.textContent = "";
+            if (quoteText) quoteText.textContent = "";
+        }
+    }
+
     // Update UI elements based on received signals
     function processSignal(signal) {
         console.log("🎯 Sinal recebido no HUD:", signal);
@@ -323,6 +399,9 @@
             logToConsole(`Entrada confirmada! Estratégia: ${signal.strategy}`, "success");
             playSynthSound("signal"); // Play signal alert sound
             
+            // Oculta holograma para mostrar coordenadas do sinal
+            setHologramState("hidden");
+
             if (entryVal) entryVal.textContent = signal.strategy;
             if (leituraVal) leituraVal.textContent = signal.leitura || "Leitura de IA ativa.";
             if (protectionVal) protectionVal.textContent = signal.protection || "Cobrir Zero";
@@ -332,13 +411,12 @@
             const kellyPercent = signal.kelly_stake || 1.0;
             if (kellyVal) kellyVal.textContent = `${kellyPercent.toFixed(1)}%`;
             if (kellyBarFill) {
-                // Kelly is usually between 0.5% and 3.0%. Map 3% to 100% width
                 const widthPercent = Math.min(100, (kellyPercent / 3.0) * 100);
                 kellyBarFill.style.width = `${widthPercent}%`;
             }
 
             // Style Card & Container Glow
-            hudContainer.className = "einstein-hud-container glow-green";
+            if (hudContainer) hudContainer.className = "einstein-hud-container glow-green";
             if (signalCard) {
                 signalCard.className = "einstein-signal-card active-signal";
             }
@@ -346,7 +424,7 @@
             // 3. Trigger Albert Einstein Easter Egg Hologram on high confidence signals
             let confidence = signal.confidence || 0;
             if (confidence > 0 && confidence <= 1.0) {
-                confidence = confidence * 100; // Convert 0.9 to 90
+                confidence = confidence * 100;
             }
             if (confidence >= 90 || kellyPercent >= 2.5) {
                 triggerEinsteinEasterEgg();
@@ -354,14 +432,17 @@
 
         } else if (signal.is_protection) {
             // Martingale protection round
-            logToConsole(`Rodada de Cobertura / Martingale ativa!`, "warn");
+            logToConsole(`Rodada de Cobertura / Martingale ativa (G${signal.attempt || 1})!`, "warn");
             playSynthSound("protection"); // Play warning chime
             
-            if (entryVal) entryVal.textContent = "COBERTURA ACT";
+            // Oculta holograma para mostrar coordenadas de proteção
+            setHologramState("hidden");
+
+            if (entryVal) entryVal.textContent = `COBERTURA G${signal.attempt || 1}`;
             if (leituraVal) leituraVal.textContent = "Aguardando confirmação do green.";
             if (signalStateLabel) signalStateLabel.textContent = "PROTEÇÃO";
             
-            hudContainer.className = "einstein-hud-container glow-magenta";
+            if (hudContainer) hudContainer.className = "einstein-hud-container glow-magenta";
             if (signalCard) {
                 signalCard.className = "einstein-signal-card active-protection";
             }
@@ -371,6 +452,18 @@
                 if (signal.outcome === "win") {
                     logToConsole("Green confirmado! Parabéns!", "success");
                     playSynthSound("win"); // Play satisfy arcade chime
+                    
+                    // Mostra holograma de comemoração (olhos 0 0 verdes e língua pra fora)
+                    setHologramState("celebrating", "GREEN CONFIRMADO!", '"A relatividade do lucro: Lucro = Massa x Consistência²"');
+                    
+                    // Retorna para o estado pensando após 4.5 segundos
+                    setTimeout(() => {
+                        const einsteinHologram = shadowRoot.getElementById("einsteinHologram");
+                        if (einsteinHologram && einsteinHologram.classList.contains("state-celebrating")) {
+                            resetSignalUI();
+                        }
+                    }, 4500);
+                    return; // Retorna para evitar resetUI imediato
                 } else if (signal.outcome === "loss") {
                     logToConsole("Loss registrado. Pausando entradas...", "error");
                 } else {
@@ -383,20 +476,16 @@
 
     // Trigger winking Einstein overlay screen
     function triggerEinsteinEasterEgg() {
-        const einsteinHologram = shadowRoot.getElementById("einsteinHologram");
-        if (!einsteinHologram) return;
-
         logToConsole("Einstein Mode: Desafiando a física clássica!", "warn");
-        
-        // Activate overlay
-        einsteinHologram.classList.add("active");
-        hudContainer.classList.add("glow-yellow");
+        setHologramState("easter-egg");
 
-        // Automatically hide it after 3.5 seconds so user can see coordinates again
+        // Automatically hide it after 3.0 seconds so user can see coordinates again
         setTimeout(() => {
-            einsteinHologram.classList.remove("active");
-            hudContainer.classList.remove("glow-yellow");
-        }, 3500);
+            const einsteinHologram = shadowRoot.getElementById("einsteinHologram");
+            if (einsteinHologram && einsteinHologram.classList.contains("active")) {
+                setHologramState("hidden");
+            }
+        }, 3000);
     }
 
     // Reset UI to standard monitoring state
@@ -416,8 +505,11 @@
         if (kellyBarFill) kellyBarFill.style.width = "0%";
         if (signalStateLabel) signalStateLabel.textContent = "Estado do Sistema";
 
-        hudContainer.className = "einstein-hud-container";
+        if (hudContainer) hudContainer.className = "einstein-hud-container";
         if (signalCard) signalCard.className = "einstein-signal-card";
+        
+        // Ativa o estado de processamento/thinking do Einstein
+        setHologramState("thinking");
     }
 
     // Listen to messages from background service worker

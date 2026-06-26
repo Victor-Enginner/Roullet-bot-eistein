@@ -33,6 +33,8 @@
     {
       "resources": [
         "einstein_hologram.png",
+        "einstein_thinking.png",
+        "einstein_celebrating.png",
         "hud.css"
       ],
       "matches": [

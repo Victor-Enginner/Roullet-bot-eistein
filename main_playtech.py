@@ -53,28 +53,31 @@ def send_signal_to_bridge(
     reset: bool = False,
     outcome: str = ""
 ):
-    """Envia o sinal estruturado para o bridge local (porta 4000)"""
-    bridge_url = "http://localhost:4000/api/webhook/signal"
-    payload = {
-        "number": number,
-        "strategy": strategy,
-        "protection": protection,
-        "leitura": leitura,
-        "confidence": confidence,
-        "kelly_stake": kelly_stake,
-        "dealer": dealer,
-        "is_protection": is_protection,
-        "attempt": attempt,
-        "reset": reset,
-        "outcome": outcome,
-        "timestamp": time.time()
-    }
-    try:
-        response = requests.post(bridge_url, json=payload, timeout=0.5)
-        return response.status_code == 200
-    except Exception as e:
-        logger.debug(f"Erro ao enviar sinal para o bridge: {e}")
-        return False
+    """Envia o sinal estruturado para o bridge local (porta 4000) de forma assíncrona (thread)"""
+    import threading
+    def _worker():
+        bridge_url = "http://localhost:4000/api/webhook/signal"
+        payload = {
+            "number": number,
+            "strategy": strategy,
+            "protection": protection,
+            "leitura": leitura,
+            "confidence": confidence,
+            "kelly_stake": kelly_stake,
+            "dealer": dealer,
+            "is_protection": is_protection,
+            "attempt": attempt,
+            "reset": reset,
+            "outcome": outcome,
+            "timestamp": time.time()
+        }
+        try:
+            requests.post(bridge_url, json=payload, timeout=0.5)
+        except Exception as e:
+            logger.debug(f"Erro ao enviar sinal para o bridge: {e}")
+            
+    threading.Thread(target=_worker, daemon=True).start()
+    return True
 
 
 def main():
@@ -366,7 +369,7 @@ def main():
                         confidence = signal["confidence"] / 100  # 0-1 for bridge
                         reasoning = signal["reasoning"]
 
-                        # Send to Vision Pro dashboard
+                        # OTIMIZAÇÃO CRÍTICA DE LATÊNCIA: Envia ao HUD local e ativa estado imediatamente
                         send_signal_to_bridge(
                             number=numero,
                             strategy=raw_strategy["entrada"],
@@ -376,15 +379,21 @@ def main():
                             kelly_stake=signal.get("kelly_stake", 1.0),
                             dealer=signal.get("dealer", "Default")
                         )
+                        strategy_state.activate(
+                            numero, numero, entry_targets, protection_targets
+                        )
 
+                        # Envia ao Telegram (independente, sem bloquear a atualização instantânea do HUD)
                         msg_completa = format_telegram_message(signal)
                         logger.info(
                             f"✅ Estratégia confirmada para {numero}. Confiança: {signal['confidence']}%"
                         )
                         logger.info(f"Razão: {reasoning}")
-                        if bot.enviar(msg_completa):
-                            strategy_state.activate(
-                                numero, numero, entry_targets, protection_targets
+                        try:
+                            bot.enviar(msg_completa)
+                        except Exception as telegram_err:
+                            logger.warning(
+                                f"⚠️ Atraso ou erro no envio ao Telegram: {telegram_err}"
                             )
                 # FIM DO PIPELINE
 

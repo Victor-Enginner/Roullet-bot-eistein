@@ -224,52 +224,57 @@
 }
 
 /* Console Logs Window */
+/* Console Logs Window */
 .einstein-console {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(0, 240, 255, 0.2);
+    background: rgba(4, 4, 8, 0.65);
+    border: 1px solid rgba(0, 240, 255, 0.3);
     border-radius: 6px;
-    height: 90px;
-    padding: 8px;
-    font-size: 10px;
-    color: #88c8ff;
+    height: 110px;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #ffffff;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    font-family: 'Share Tech Mono', monospace;
+    gap: 5px;
+    font-family: 'Share Tech Mono', 'Courier New', Courier, monospace, system-ui, -apple-system;
     scrollbar-width: thin;
-    scrollbar-color: rgba(0, 240, 255, 0.3) transparent;
+    scrollbar-color: rgba(0, 240, 255, 0.4) transparent;
 }
 
 .einstein-console::-webkit-scrollbar {
     width: 4px;
 }
 .einstein-console::-webkit-scrollbar-thumb {
-    background: rgba(0, 240, 255, 0.3);
+    background: rgba(0, 240, 255, 0.4);
     border-radius: 2px;
 }
 
 .einstein-console-line {
     border-left: 2px solid var(--border-cyan);
-    padding-left: 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding-left: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.4;
+    color: #e2f1ff;
 }
 
 .einstein-console-line.success {
     border-color: var(--border-green);
-    color: #a8ffa8;
+    color: #55ff55;
+    text-shadow: 0 0 3px rgba(85, 255, 85, 0.3);
 }
 
 .einstein-console-line.warn {
     border-color: var(--border-yellow);
-    color: #fff2a8;
+    color: #ffdd55;
+    text-shadow: 0 0 3px rgba(255, 221, 85, 0.3);
 }
 
 .einstein-console-line.error {
     border-color: var(--border-magenta);
-    color: #ffa8b8;
+    color: #ff5555;
+    text-shadow: 0 0 3px rgba(255, 85, 85, 0.3);
 }
 
 /* Albert Einstein Easter Egg Hologram Container */
@@ -279,21 +284,30 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(8, 8, 15, 0.95);
+    background: rgba(8, 8, 15, 0.96);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+    transition: opacity 0.4s cubic-bezier(0.19, 1, 0.22, 1);
     z-index: 10;
 }
 
-.einstein-hologram-overlay.active {
+.einstein-hologram-overlay.active,
+.einstein-hologram-overlay.state-thinking,
+.einstein-hologram-overlay.state-celebrating {
     opacity: 1;
     pointer-events: auto;
+}
+
+.einstein-hologram-overlay.active {
     animation: hologram-glitch 0.4s ease-out;
+}
+
+.einstein-hologram-overlay.state-celebrating {
+    animation: hologram-glitch 0.5s ease-out;
 }
 
 .einstein-hologram-portrait {
@@ -307,6 +321,20 @@
     margin-bottom: 8px;
     filter: sepia(100%) saturate(300%) hue-rotate(10deg) brightness(95%);
     position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s, filter 0.3s;
+}
+
+/* Portrait states */
+.einstein-hologram-overlay.state-thinking .einstein-hologram-portrait {
+    border-color: var(--border-yellow);
+    box-shadow: var(--shadow-box-yellow);
+    filter: sepia(100%) saturate(250%) hue-rotate(15deg) brightness(95%);
+}
+
+.einstein-hologram-overlay.state-celebrating .einstein-hologram-portrait {
+    border-color: var(--border-green);
+    box-shadow: var(--shadow-box-green);
+    filter: sepia(100%) saturate(400%) hue-rotate(85deg) brightness(105%);
 }
 
 .einstein-hologram-portrait::after {
@@ -323,24 +351,46 @@
     animation: scanlines 0.2s infinite;
 }
 
-.einstein-hologram-quote {
-    font-size: 10px;
-    color: var(--border-yellow);
-    text-shadow: 0 0 6px rgba(255, 223, 0, 0.6);
-    text-align: center;
-    padding: 0 16px;
-    font-style: italic;
-    line-height: 1.3;
-}
-
 .einstein-hologram-alert {
     margin-top: 6px;
     font-size: 12px;
     font-weight: bold;
     color: #ffffff;
     font-family: 'Orbitron', monospace;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     text-shadow: 0 0 8px #ffffff;
+    transition: color 0.3s, text-shadow 0.3s;
+}
+
+.einstein-hologram-overlay.state-thinking .einstein-hologram-alert {
+    color: var(--border-yellow);
+    text-shadow: 0 0 8px var(--border-yellow);
+}
+
+.einstein-hologram-overlay.state-celebrating .einstein-hologram-alert {
+    color: var(--border-green);
+    text-shadow: 0 0 10px var(--border-green);
+}
+
+.einstein-hologram-quote {
+    font-size: 11px;
+    color: var(--border-yellow);
+    text-shadow: 0 0 6px rgba(255, 223, 0, 0.6);
+    text-align: center;
+    padding: 0 16px;
+    font-style: italic;
+    line-height: 1.4;
+    transition: color 0.3s, text-shadow 0.3s;
+}
+
+.einstein-hologram-overlay.state-thinking .einstein-hologram-quote {
+    color: var(--border-yellow);
+    text-shadow: 0 0 6px rgba(255, 223, 0, 0.5);
+}
+
+.einstein-hologram-overlay.state-celebrating .einstein-hologram-quote {
+    color: var(--border-green);
+    text-shadow: 0 0 8px rgba(57, 255, 20, 0.6);
 }
 
 /* Animations */
