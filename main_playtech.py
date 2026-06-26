@@ -81,6 +81,9 @@ def send_signal_to_bridge(
 
 
 def main():
+    # 1. Menu interativo para seleção de estratégias
+    from server.agents.strategy import select_strategy_menu
+    select_strategy_menu()
 
     logger.info("=" * 60)
     logger.info("BOT INICIADO - Roleta Brasileira (Playtech WebSocket)")

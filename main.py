@@ -73,6 +73,10 @@ def send_signal_to_bridge(
 
 def run_bot():
     """Execução principal do bot com lógica de sessão"""
+    # 1. Menu interativo para seleção de estratégias
+    from server.agents.strategy import select_strategy_menu
+    select_strategy_menu()
+
     logger.info("=" * 60)
     logger.info("BOT INICIADO - Roleta Brasileira (Arquitetura Portável)")
     logger.info(f"Database: {Settings.DB_PATH}")

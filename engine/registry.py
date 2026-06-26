@@ -2,12 +2,33 @@ from typing import Dict, Optional
 from .parser import parse_strategy_targets, parse_protection_targets
 from config.settings import Settings
 import logging
-from strategy.presets.default_terminals import ESTRATEGIAS
 from estrategias import BLACKLIST
 
 logger = logging.getLogger("engine.registry")
 
-# --- ESTRATÉGIAS importadas do arquivo central ---
+# Proxy dinâmico para permitir alternância de presets sem quebrar imports estáticos
+class DynamicEstrategiasProxy(dict):
+    def __getitem__(self, key):
+        from server.agents.strategy import get_active_strategy_preset
+        return get_active_strategy_preset()[key]
+    
+    def __contains__(self, key):
+        from server.agents.strategy import get_active_strategy_preset
+        return key in get_active_strategy_preset()
+        
+    def items(self):
+        from server.agents.strategy import get_active_strategy_preset
+        return get_active_strategy_preset().items()
+
+    def get(self, key, default=None):
+        from server.agents.strategy import get_active_strategy_preset
+        return get_active_strategy_preset().get(key, default)
+
+    def __len__(self):
+        from server.agents.strategy import get_active_strategy_preset
+        return len(get_active_strategy_preset())
+
+ESTRATEGIAS = DynamicEstrategiasProxy()
 
 
 class StrategyRegistry:
@@ -26,6 +47,7 @@ class StrategyRegistry:
 
         logger.info("Iniciando preload de estratégias...")
 
+        # Força o preload a ler dinamicamente as estratégias ativas
         for numero, dados in ESTRATEGIAS.items():
             # Bloqueio conforme especificações do motor central
             if (
