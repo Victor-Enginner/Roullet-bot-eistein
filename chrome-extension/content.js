@@ -184,38 +184,27 @@
         consoleLogs.scrollTop = consoleLogs.scrollHeight;
     }
 
-    // Connect to local Socket.io bridge
+    // Query status from background
     function connectSocket() {
         logToConsole("Tentando estabelecer conexão com o bridge...");
         
-        // io is globally available because we load socket.io.min.js first in manifest content scripts
-        if (typeof io === "undefined") {
-            logToConsole("Erro: Socket.io client não carregado.", "error");
-            return;
-        }
-
-        socket = io(serverUrl, {
-            reconnectionAttempts: 10,
-            reconnectionDelay: 2000
+        chrome.runtime.sendMessage({ action: "request_status" }, (response) => {
+            if (response && response.connected !== undefined) {
+                updateConnectionStatus(response.connected);
+            }
         });
+    }
 
+    function updateConnectionStatus(connected) {
         const statusDot = shadowRoot.getElementById("statusDot");
-
-        socket.on("connect", () => {
+        if (connected) {
             logToConsole("Conectado ao servidor da ponte!", "success");
             if (statusDot) statusDot.className = "einstein-hud-dot connected";
-        });
-
-        socket.on("disconnect", () => {
+        } else {
             logToConsole("Desconectado do servidor da ponte.", "error");
             if (statusDot) statusDot.className = "einstein-hud-dot";
             resetSignalUI();
-        });
-
-        // Receive real-time signals from the Python/TypeScript bridge
-        socket.on("signal", (signal) => {
-            processSignal(signal);
-        });
+        }
     }
 
     // Update UI elements based on received signals
@@ -339,6 +328,10 @@
                     hudContainer.style.display = "none";
                 }
             }
+        } else if (message.type === "connection_status") {
+            updateConnectionStatus(message.connected);
+        } else if (message.type === "signal") {
+            processSignal(message.signal);
         }
     });
 

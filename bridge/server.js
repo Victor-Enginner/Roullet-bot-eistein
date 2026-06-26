@@ -1,6 +1,6 @@
 const express = require('express');
 const { createServer } = require('http');
-const { Server } = require('socket.io');
+const WebSocket = require('ws');
 const cors = require('cors');
 
 const app = express();
@@ -10,25 +10,23 @@ app.use(cors());
 app.use(express.json());
 
 const server = createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
+const wss = new WebSocket.Server({ server });
 
 app.post('/api/webhook/signal', (req, res) => {
   const signal = req.body;
-  // Broadcast to WebSocket clients
-  io.emit('signal', signal);
+  // Broadcast signal to all native WebSocket clients
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(signal));
+    }
+  });
   res.json({ status: 'received', signal });
 });
 
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+wss.on('connection', (ws) => {
+  console.log('Client connected');
+  ws.on('close', () => {
+    console.log('Client disconnected');
   });
 });
 

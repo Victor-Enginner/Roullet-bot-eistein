@@ -1,29 +1,98 @@
 // Einstein Roulette AI HUD - Background Script (Service Worker)
+const serverWsUrl = "ws://localhost:4000";
+let socket = null;
+let isConnected = false;
+
+// Connect to native WebSocket bridge
+function connectSocket() {
+    if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) {
+        return;
+    }
+
+    console.log("Background: Conectando ao bridge local...");
+    socket = new WebSocket(serverWsUrl);
+
+    socket.onopen = () => {
+        console.log("Background: Conectado ao bridge local!");
+        isConnected = true;
+        broadcastToTabs({ type: "connection_status", connected: true });
+    };
+
+    socket.onmessage = (event) => {
+        try {
+            const signal = JSON.parse(event.data);
+            console.log("Background: Sinal recebido do bridge:", signal);
+            broadcastToTabs({ type: "signal", signal: signal });
+        } catch (e) {
+            console.error("Erro ao fazer parse do sinal:", e);
+        }
+    };
+
+    socket.onclose = () => {
+        console.log("Background: Desconectado do bridge. Reabrando conexão em 3s...");
+        isConnected = false;
+        broadcastToTabs({ type: "connection_status", connected: false });
+        
+        // Reconnect loop
+        setTimeout(connectSocket, 3000);
+    };
+
+    socket.onerror = (err) => {
+        console.log("Background: Erro de WebSocket local:", err);
+    };
+}
+
+// Broadcast messages to all content script frames
+function broadcastToTabs(message) {
+    chrome.tabs.query({}, (tabs) => {
+        for (let tab of tabs) {
+            if (tab.id) {
+                chrome.tabs.sendMessage(tab.id, message).catch(() => {
+                    // Ignore errors for tabs without content scripts
+                });
+            }
+        }
+    });
+}
+
+// Initialize connection
+connectSocket();
+
+// Connect on events
+chrome.runtime.onStartup.addListener(connectSocket);
+chrome.runtime.onInstalled.addListener(connectSocket);
+
+// Listen to messages from content scripts (e.g. status requests)
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "request_status") {
+        sendResponse({ connected: isConnected });
+    }
+});
+
+// Handles toolbar icon clicks to toggle HUD
 chrome.action.onClicked.addListener((tab) => {
     if (tab && tab.id) {
-        // Tenta enviar a mensagem para o content script
+        // Tenta enviar mensagem de toggle
         chrome.tabs.sendMessage(tab.id, { action: "toggleHUD" }).catch(err => {
-            console.log("Falha ao comunicar com o content script. Injetando dinamicamente...");
+            console.log("Content script não inicializado na aba. Injetando...");
             
-            // Injeta o CSS e JS em tempo de execução em todas as frames (inclusive iframes do jogo)
+            // Injeta o content script em tempo de execução
             chrome.scripting.executeScript({
                 target: { tabId: tab.id, allFrames: true },
-                files: ["socket.io.min.js", "content.js"]
+                files: ["content.js"]
             }).then(() => {
                 chrome.scripting.insertCSS({
                     target: { tabId: tab.id, allFrames: true },
                     files: ["hud.css"]
                 });
-                console.log("Injetado com sucesso! Abrindo HUD...");
                 
-                // Aguarda 250ms para inicialização e envia o sinal de abertura
+                // Aguarda inicialização e envia status e abertura
                 setTimeout(() => {
-                    chrome.tabs.sendMessage(tab.id, { action: "toggleHUD" }).catch(e => {
-                        console.log("Erro ao forçar abertura pós-injeção:", e);
-                    });
+                    chrome.tabs.sendMessage(tab.id, { action: "toggleHUD" }).catch(() => {});
+                    chrome.tabs.sendMessage(tab.id, { type: "connection_status", connected: isConnected }).catch(() => {});
                 }, 250);
             }).catch(injectErr => {
-                console.log("Não é possível injetar nesta página (páginas internas são bloqueadas):", injectErr);
+                console.log("Injeção bloqueada (aba interna do Chrome):", injectErr);
             });
         });
     }
