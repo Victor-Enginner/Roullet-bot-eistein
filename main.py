@@ -31,6 +31,40 @@ from server.agents.telegram import format_telegram_message
 logger = setup_logger("main_visual")
 
 
+def send_signal_to_bridge(
+    number: int,
+    strategy: str,
+    protection: str,
+    leitura: str,
+    confidence: float,
+    kelly_stake: float = 1.0,
+    dealer: str = "Default",
+    is_protection: bool = False,
+    attempt: int = 0,
+    reset: bool = False
+):
+    """Envia o sinal estruturado para o bridge local (porta 4000)"""
+    import requests
+    bridge_url = "http://localhost:4000/api/webhook/signal"
+    payload = {
+        "number": number,
+        "strategy": strategy,
+        "protection": protection,
+        "leitura": leitura,
+        "confidence": confidence,
+        "kelly_stake": kelly_stake,
+        "dealer": dealer,
+        "is_protection": is_protection,
+        "attempt": attempt,
+        "reset": reset,
+        "timestamp": time.time()
+    }
+    try:
+        requests.post(bridge_url, json=payload, timeout=0.5)
+    except Exception as e:
+        logger.debug(f"Erro ao enviar sinal para o bridge: {e}")
+
+
 def run_bot():
     """Execução principal do bot com lógica de sessão"""
     logger.info("=" * 60)
@@ -179,6 +213,14 @@ def run_bot():
                         f"🎯 Taxa de acerto: {accuracy:.1f}%"
                     )
                     logger.info(f"WIN {win_type} detectado no {numero}")
+                    send_signal_to_bridge(
+                        number=numero,
+                        strategy="",
+                        protection="",
+                        leitura="",
+                        confidence=0.0,
+                        reset=True
+                    )
                     bot.enviar_evento(result, msg, imediato=True)
 
                     stats_msg = analytics.register(
@@ -228,6 +270,14 @@ def run_bot():
                     metrics.red_count += 1
                     msg = f"🔴 LOSS CONFIRMADO\n❌ 3 proteções atingidas\nEncerrando leitura"
                     logger.info(f"LOSS detectado no {numero}")
+                    send_signal_to_bridge(
+                        number=numero,
+                        strategy="",
+                        protection="",
+                        leitura="",
+                        confidence=0.0,
+                        reset=True
+                    )
                     bot.enviar_evento("LOSS", msg, imediato=True)
 
                     stats_msg = analytics.register(
@@ -257,6 +307,15 @@ def run_bot():
                         f"⚠️ Proteção {strategy_state.attempt}/3\nSeguimos na estratégia"
                     )
                     logger.info(f"Proteção {strategy_state.attempt}/3 no {numero}")
+                    send_signal_to_bridge(
+                        number=numero,
+                        strategy="",
+                        protection="",
+                        leitura="",
+                        confidence=0.0,
+                        is_protection=True,
+                        attempt=strategy_state.attempt
+                    )
                     bot.enviar_evento("PROTECTION", msg)
                     time.sleep(0.5)
                     continue
@@ -334,6 +393,15 @@ def run_bot():
                     )
                     logger.info(f"Razão: {reasoning}")
                     if bot.enviar_evento("SIGNAL", msg_completa):
+                        send_signal_to_bridge(
+                            number=numero,
+                            strategy=raw_strategy["entrada"],
+                            protection=raw_strategy.get("cobertura", ""),
+                            leitura=raw_strategy["leitura"],
+                            confidence=confidence,
+                            kelly_stake=signal.get("kelly_stake", 1.0),
+                            dealer=signal.get("dealer", "Default")
+                        )
                         strategy_state.activate(
                             numero, numero, entry_targets, protection_targets
                         )

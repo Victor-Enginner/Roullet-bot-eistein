@@ -41,25 +41,37 @@ logger = setup_logger("main_playtech")
 
 
 def send_signal_to_bridge(
-    number, strategy, confidence, entry_targets, protection_targets
+    number: int,
+    strategy: str,
+    protection: str,
+    leitura: str,
+    confidence: float,
+    kelly_stake: float = 1.0,
+    dealer: str = "Default",
+    is_protection: bool = False,
+    attempt: int = 0,
+    reset: bool = False
 ):
-    """Envia sinal para o frontend Vision Pro"""
+    """Envia o sinal estruturado para o bridge local (porta 4000)"""
     bridge_url = "http://localhost:4000/api/webhook/signal"
-
     payload = {
         "number": number,
         "strategy": strategy,
+        "protection": protection,
+        "leitura": leitura,
         "confidence": confidence,
-        "entry": entry_targets,
-        "protection": protection_targets,
+        "kelly_stake": kelly_stake,
+        "dealer": dealer,
+        "is_protection": is_protection,
+        "attempt": attempt,
+        "reset": reset,
+        "timestamp": time.time()
     }
-
     try:
         response = requests.post(bridge_url, json=payload, timeout=0.5)
-        print(f"Vision Pro signal sent: {response.status_code}")
         return response.status_code == 200
     except Exception as e:
-        print(f"Erro ao enviar sinal para Vision Pro: {e}")
+        logger.debug(f"Erro ao enviar sinal para o bridge: {e}")
         return False
 
 
@@ -191,6 +203,14 @@ def main():
                         mensagem = f"WIN {win_type} detectado no {numero}"
                         logger.info(mensagem)
                         logger.info(f"SILENCED_VOICE: {mensagem}")
+                        send_signal_to_bridge(
+                            number=numero,
+                            strategy="",
+                            protection="",
+                            leitura="",
+                            confidence=0.0,
+                            reset=True
+                        )
                         bot.enviar_imediato(msg)
 
                         # Captura e envia o box de analytics detalhado
@@ -246,6 +266,14 @@ def main():
                         mensagem = f"LOSS detectado no {numero}"
                         logger.info(mensagem)
                         logger.info(f"SILENCED_VOICE: {mensagem}")
+                        send_signal_to_bridge(
+                            number=numero,
+                            strategy="",
+                            protection="",
+                            leitura="",
+                            confidence=0.0,
+                            reset=True
+                        )
                         bot.enviar_imediato(msg)
 
                         # Captura e envia o box de analytics detalhado
@@ -281,6 +309,15 @@ def main():
                         mensagem = f"Proteção {strategy_state.attempt}/3 no {numero}"
                         logger.info(mensagem)
                         logger.info(f"SILENCED_VOICE: {mensagem}")
+                        send_signal_to_bridge(
+                            number=numero,
+                            strategy="",
+                            protection="",
+                            leitura="",
+                            confidence=0.0,
+                            is_protection=True,
+                            attempt=strategy_state.attempt
+                        )
                         success = bot.enviar(msg)
                         continue
 
@@ -327,11 +364,13 @@ def main():
 
                         # Send to Vision Pro dashboard
                         send_signal_to_bridge(
-                            numero,
-                            raw_strategy["leitura"],
-                            confidence,
-                            entry_targets,
-                            protection_targets,
+                            number=numero,
+                            strategy=raw_strategy["entrada"],
+                            protection=raw_strategy.get("cobertura", ""),
+                            leitura=raw_strategy["leitura"],
+                            confidence=signal["confidence"],
+                            kelly_stake=signal.get("kelly_stake", 1.0),
+                            dealer=signal.get("dealer", "Default")
                         )
 
                         msg_completa = format_telegram_message(signal)

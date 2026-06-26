@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Einstein Roulette AI HUD",
+  "version": "1.0",
+  "description": "HUD Cyberpunk de Análise de Roleta em tempo real com IA",
+  "permissions": [
+    "activeTab"
+  ],
+  "action": {
+    "default_title": "Einstein HUD Toggle"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "socket.io.min.js",
+        "content.js"
+      ],
+      "css": [
+        "hud.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "einstein_hologram.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}
