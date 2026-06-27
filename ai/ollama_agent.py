@@ -236,7 +236,7 @@ class OllamaAnalyst:
 
     def __init__(
         self,
-        model: str | List[str] = ["llama3.1:8b", "llama3:latest", "gemma2:2b", "llama3.2:3b", "llama3.2:1b", "qwen2.5:1.5b"],
+        model: Optional[str | List[str]] = None,
         host: str = "http://127.0.0.1:11434",
         timeout: float = 5.0,
         enabled: bool = True,
@@ -252,7 +252,23 @@ class OllamaAnalyst:
             min_confidence: Confiança mínima pra considerar "should_enter=True"
             cache_ttl:    Tempo (s) de cache de respostas idênticas
         """
-        self.models = [model] if isinstance(model, str) else model
+        import os
+        if model is None:
+            env_model = os.getenv("OLLAMA_MODEL")
+            if env_model:
+                self.models = [env_model]
+            else:
+                self.models = [
+                    "qwen2.5:1.5b",
+                    "llama3.2:1b",
+                    "gemma2:2b",
+                    "llama3.2:3b",
+                    "llama3.1:8b",
+                    "llama3:latest"
+                ]
+        else:
+            self.models = [model] if isinstance(model, str) else model
+
         self.model = self.models[0]
         self.host = host
         self.timeout = timeout
