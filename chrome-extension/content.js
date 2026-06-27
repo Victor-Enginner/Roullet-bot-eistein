@@ -1,8 +1,5 @@
 // Einstein Roulette AI HUD - Chrome Extension Content Script
 (function () {
-    // Apenas executa na janela principal (ignora iframes do jogo e cross-origin)
-    if (window.top !== window.self) return;
-
     console.log("🧠 Einstein Roulette AI HUD Content Script loaded!");
 
     // Prevents double injection
