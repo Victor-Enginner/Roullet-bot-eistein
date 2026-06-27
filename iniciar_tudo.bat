@@ -19,11 +19,17 @@ if "%ERRORLEVEL%"=="0" (
 )
 
 :: 2. Iniciar Servidor Ponte (Bridge Node.js)
-echo [2/3] Iniciando Servidor Ponte Node.js (Porta 4000)...
-cd /d "c:\Users\Victor Ads\Desktop\ROLETA\oc-digodaroleta-main\bridge"
-start "Einstein HUD Bridge" cmd /k "node server.js"
-cd /d "c:\Users\Victor Ads\Desktop\ROLETA\oc-digodaroleta-main"
-timeout /t 2 /nobreak >nul
+echo [2/3] Verificando Servidor Ponte Node.js (Porta 4000)...
+netstat -ano | findstr :4000 >nul
+if "%ERRORLEVEL%"=="0" (
+    echo    - Servidor Ponte ja esta rodando na porta 4000.
+) else (
+    echo    - Iniciando Servidor Ponte Node.js...
+    cd /d "c:\Users\Victor Ads\Desktop\ROLETA\oc-digodaroleta-main\bridge"
+    start "Einstein HUD Bridge" cmd /k "node server.js"
+    cd /d "c:\Users\Victor Ads\Desktop\ROLETA\oc-digodaroleta-main"
+    timeout /t 2 /nobreak >nul
+)
 
 :: 3. Selecionar o Script da Roleta
 echo.
