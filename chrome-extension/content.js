@@ -214,19 +214,34 @@
 
     // --- Web Audio API Synth Sound Generator ---
     let audioCtx = null;
-    function getAudioContext() {
+
+    // Inicializa o AudioContext apenas após a primeira interação do usuário na página
+    function initAudioOnGesture() {
         if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.log("Erro ao criar AudioContext:", e);
+            }
         }
-        if (audioCtx.state === "suspended") {
-            audioCtx.resume();
+        if (audioCtx && audioCtx.state === "suspended") {
+            audioCtx.resume().catch(() => {});
         }
+    }
+    document.addEventListener("click", initAudioOnGesture, { once: true, capture: true });
+    document.addEventListener("keydown", initAudioOnGesture, { once: true, capture: true });
+
+    function getAudioContext() {
         return audioCtx;
     }
 
     function playSynthSound(type) {
         try {
             const ctx = getAudioContext();
+            if (!ctx || ctx.state === "suspended") {
+                // Ignora silenciosamente se o áudio estiver bloqueado pelo navegador por falta de clique
+                return;
+            }
             const now = ctx.currentTime;
             
             if (type === "signal") {
