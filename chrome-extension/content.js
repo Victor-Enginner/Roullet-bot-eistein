@@ -393,6 +393,18 @@
         if (croupierVal && signal.dealer) croupierVal.textContent = signal.dealer;
         if (lastSpinVal && signal.number !== undefined) lastSpinVal.textContent = signal.number;
         
+        // Tratamento de atualização de status (giros e crupiê de rotina)
+        if (signal.status_tick) {
+            const isCurrentlyActive = signalCard && (
+                signalCard.classList.contains("active-signal") ||
+                signalCard.classList.contains("active-protection")
+            );
+            if (!isCurrentlyActive) {
+                resetSignalUI();
+            }
+            return;
+        }
+        
         // 2. Determine state and colors
         if (signal.strategy) {
             // New active entry signal

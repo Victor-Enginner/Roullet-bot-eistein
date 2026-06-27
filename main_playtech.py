@@ -51,7 +51,8 @@ def send_signal_to_bridge(
     is_protection: bool = False,
     attempt: int = 0,
     reset: bool = False,
-    outcome: str = ""
+    outcome: str = "",
+    status_tick: bool = False
 ):
     """Envia o sinal estruturado para o bridge local (porta 4000) de forma assíncrona (thread)"""
     import threading
@@ -69,6 +70,7 @@ def send_signal_to_bridge(
             "attempt": attempt,
             "reset": reset,
             "outcome": outcome,
+            "status_tick": status_tick,
             "timestamp": time.time()
         }
         try:
@@ -171,6 +173,18 @@ def main():
 
                 # Atualiza histórico recente (mantém últimos 100 via FIFO)
                 history_buffer.add(numero)
+
+                # Envia status tick para atualizar Croupier e Último Giro no HUD em tempo real
+                active_dealer = monitor.get_current_dealer() if hasattr(monitor, "get_current_dealer") else "Default"
+                send_signal_to_bridge(
+                    number=numero,
+                    strategy="",
+                    protection="",
+                    leitura="",
+                    confidence=0.0,
+                    dealer=active_dealer,
+                    status_tick=True
+                )
 
                 # 3. Registro do número
                 db.save_number(numero, telegram_sent=True, strategy=None)

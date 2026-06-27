@@ -42,7 +42,8 @@ def send_signal_to_bridge(
     is_protection: bool = False,
     attempt: int = 0,
     reset: bool = False,
-    outcome: str = ""
+    outcome: str = "",
+    status_tick: bool = False
 ):
     """Envia o sinal estruturado para o bridge local (porta 4000) de forma assíncrona (thread)"""
     import threading
@@ -61,6 +62,7 @@ def send_signal_to_bridge(
             "attempt": attempt,
             "reset": reset,
             "outcome": outcome,
+            "status_tick": status_tick,
             "timestamp": time.time()
         }
         try:
@@ -168,6 +170,18 @@ def run_bot():
             # Atualiza histórico recente (mantém últimos 100 via FIFO)
             if not history_buffer.add(numero, time.time()):
                 continue  # Ignora giro inconsistente (Windows 10 integrity)
+
+            # Envia status tick para atualizar Croupier e Último Giro no HUD em tempo real
+            active_dealer = monitor.get_current_dealer()
+            send_signal_to_bridge(
+                number=numero,
+                strategy="",
+                protection="",
+                leitura="",
+                confidence=0.0,
+                dealer=active_dealer,
+                status_tick=True
+            )
 
             # 0. Atualiza memória de transições e detecta padrões (Somente após 60 giros)
             transition_memory.update(history_buffer.get_last(2))
