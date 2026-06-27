@@ -27,7 +27,9 @@ except ImportError:
     OLLAMA_AVAILABLE = False
     Client = None  # type: ignore
 
-logger = logging.getLogger("ai.ollama_agent")
+from utils.logger import setup_logger
+
+logger = setup_logger("ai.ollama_agent")
 
 
 # ---------------------------------------------------------------------------
@@ -234,9 +236,9 @@ class OllamaAnalyst:
 
     def __init__(
         self,
-        model: str | List[str] = ["llama3.1:8b", "llama3:latest", "gemma2:2b"],
+        model: str | List[str] = ["llama3.1:8b", "llama3:latest", "gemma2:2b", "llama3.2:3b", "llama3.2:1b", "qwen2.5:1.5b"],
         host: str = "http://127.0.0.1:11434",
-        timeout: float = 25.0,
+        timeout: float = 5.0,
         enabled: bool = True,
         min_confidence: int = 30,
         cache_ttl: int = 60,
