@@ -236,6 +236,8 @@ class GameMonitor:
                 handles = self.working_frame.locator(selector).element_handles()
                 if handles:
                     return handles if all else handles[0]
+                else:
+                    self.working_frame = None
             except Exception:
                 self.working_frame = None
 
