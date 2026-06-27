@@ -14,7 +14,7 @@ if "%ERRORLEVEL%"=="0" (
     echo    - Ollama ja esta em execucao.
 ) else (
     echo    - Iniciando servidor do Ollama em segundo plano...
-    start "" /B ollama serve
+    start "Ollama Server" /MIN ollama serve
     timeout /t 3 /nobreak >nul
 )
 
@@ -35,13 +35,18 @@ echo   [2] Roleta Playtech (main_playtech.py - Captura por WebSocket)
 echo ======================================================================
 set /p opcao="Digite a opcao desejada (1 ou 2) e pressione Enter: "
 
-if "%opcao%"=="2" (
-    echo    - Iniciando Roleta Playtech (main_playtech.py)...
-    start "Einstein Bot IA (Playtech)" cmd /k ".venv\Scripts\python.exe main_playtech.py"
-) else (
-    echo    - Iniciando Roleta Visual padrao (main.py)...
-    start "Einstein Bot IA (Visual)" cmd /k ".venv\Scripts\python.exe main.py"
-)
+if "%opcao%"=="2" goto playtech
+
+:visual
+echo    - Iniciando Roleta Visual padrao (main.py)...
+start "Einstein Bot IA - Visual" cmd /k ".venv\Scripts\python.exe main.py"
+goto end_start
+
+:playtech
+echo    - Iniciando Roleta Playtech (main_playtech.py)...
+start "Einstein Bot IA - Playtech" cmd /k ".venv\Scripts\python.exe main_playtech.py"
+
+:end_start
 
 echo.
 echo ======================================================================
