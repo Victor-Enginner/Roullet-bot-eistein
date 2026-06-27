@@ -557,8 +557,27 @@
         }
     });
 
+    // Keep MV3 background service worker alive while game tab is active
+    let keepAlivePort = null;
+    function keepServiceWorkerAlive() {
+        if (keepAlivePort) {
+            try { keepAlivePort.disconnect(); } catch (e) {}
+        }
+        try {
+            keepAlivePort = chrome.runtime.connect({ name: "einstein-hud-keepalive" });
+            keepAlivePort.onDisconnect.addListener(() => {
+                console.log("HUD: Keep-alive port disconnected. Reconnecting in 1s...");
+                setTimeout(keepServiceWorkerAlive, 1000);
+            });
+        } catch (e) {
+            console.log("HUD: Erro ao conectar port de keep-alive:", e);
+            setTimeout(keepServiceWorkerAlive, 2000);
+        }
+    }
+
     // Initialize extension
     initUI();
     connectSocket();
+    keepServiceWorkerAlive();
 
 })();

@@ -69,6 +69,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
+// Keep-alive port connection to prevent suspension in MV3
+chrome.runtime.onConnect.addListener((port) => {
+    if (port.name === "einstein-hud-keepalive") {
+        console.log("Background: Keep-alive port connected.");
+        port.onDisconnect.addListener(() => {
+            console.log("Background: Keep-alive port disconnected.");
+        });
+    }
+});
+
 // Handles toolbar icon clicks to toggle HUD
 chrome.action.onClicked.addListener((tab) => {
     if (tab && tab.id) {
