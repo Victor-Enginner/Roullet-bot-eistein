@@ -563,16 +563,24 @@
     // Keep MV3 background service worker alive while game tab is active
     let keepAlivePort = null;
     function keepServiceWorkerAlive() {
+        // Se a extensão foi recarregada/desativada, o contexto é invalidado.
+        // Devemos parar o loop para não inundar o console/erros do Chrome.
+        if (!chrome.runtime || !chrome.runtime.id) {
+            console.log("HUD: Contexto da extensão invalidado. Parando keep-alive.");
+            return;
+        }
         if (keepAlivePort) {
             try { keepAlivePort.disconnect(); } catch (e) {}
         }
         try {
             keepAlivePort = chrome.runtime.connect({ name: "einstein-hud-keepalive" });
             keepAlivePort.onDisconnect.addListener(() => {
+                if (!chrome.runtime || !chrome.runtime.id) return;
                 console.log("HUD: Keep-alive port disconnected. Reconnecting in 1s...");
                 setTimeout(keepServiceWorkerAlive, 1000);
             });
         } catch (e) {
+            if (!chrome.runtime || !chrome.runtime.id) return;
             console.log("HUD: Erro ao conectar port de keep-alive:", e);
             setTimeout(keepServiceWorkerAlive, 2000);
         }

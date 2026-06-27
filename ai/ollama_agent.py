@@ -235,7 +235,7 @@ class OllamaAnalyst:
     def __init__(
         self,
         model: str | List[str] = ["llama3.1:8b", "llama3:latest", "gemma2:2b"],
-        host: str = "http://localhost:11434",
+        host: str = "http://127.0.0.1:11434",
         timeout: float = 25.0,
         enabled: bool = True,
         min_confidence: int = 30,

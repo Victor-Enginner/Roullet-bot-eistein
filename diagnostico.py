@@ -89,7 +89,7 @@ except ImportError:
 section("6. SERVIDOR OLLAMA")
 try:
     import requests
-    r = requests.get("http://localhost:11434/api/tags", timeout=5)
+    r = requests.get("http://127.0.0.1:11434/api/tags", timeout=5)
     if r.status_code == 200:
         data = r.json()
         models = [m["name"] for m in data.get("models", [])]
