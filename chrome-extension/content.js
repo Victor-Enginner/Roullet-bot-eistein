@@ -2,6 +2,19 @@
 (function () {
     console.log("🧠 Einstein Roulette AI HUD Content Script loaded!");
 
+    // O HUD é desenhado DENTRO do frame do jogo (por isso aparece sobre a
+    // roleta). Pulamos apenas os iframes minúsculos de tracking/anúncio (que
+    // não comportam o painel) — assim evitamos HUDs duplicados em frames inúteis
+    // SEM esconder o HUD do frame do jogo. Frames grandes (topo + jogo) renderizam.
+    try {
+        if (window.top !== window.self &&
+            (window.innerWidth < 320 || window.innerHeight < 320)) {
+            return;
+        }
+    } catch (e) {
+        // cross-origin: por segurança, deixa renderizar
+    }
+
     // Prevents double injection
     if (window.einsteinHUDInitialized) return;
     window.einsteinHUDInitialized = true;
@@ -391,7 +404,19 @@
     }
 
     // Update UI elements based on received signals
+    let lastProcessedTs = null;
     function processSignal(signal) {
+        // Deduplicação por timestamp: o replay-on-connect da ponte (ou um
+        // rebroadcast) pode reentregar o mesmo sinal. Cada envio do Python tem
+        // um timestamp único, então sinais idênticos são ignorados (não
+        // reprocessa nem toca o som de novo).
+        if (signal && signal.timestamp != null) {
+            if (signal.timestamp === lastProcessedTs) {
+                return;
+            }
+            lastProcessedTs = signal.timestamp;
+        }
+
         console.log("🎯 Sinal recebido no HUD:", signal);
 
         const croupierVal = shadowRoot.getElementById("croupierVal");

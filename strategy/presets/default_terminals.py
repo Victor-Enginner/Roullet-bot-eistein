@@ -14,13 +14,13 @@ ESTRATEGIAS = {
     },
     2: {
         "leitura": "Cluster técnico em terminal baixo.",
-        "entrada": "T4 e T6 com 1 vizinho",
-        "cobertura": "T5 / T2",
+        "entrada": "T5 e T2 com 1 vizinho",
+        "cobertura": "T4 / T6",
     },
     3: {
         "leitura": "Fluxo claro em terminais médios.",
         "entrada": "T3 e T6 com 1 vizinho",
-        "cobertura": "T7 / T4",
+        "cobertura": "T9 / T4",
     },
     4: {
         "leitura": "Terminal repetindo padrão anterior.",
@@ -96,7 +96,9 @@ ESTRATEGIAS = {
         "entrada": "T2 e T3 com 1 vizinho",
         "cobertura": "12, 21, 13, 31, 23, 32",
     },
-    22: {},
+    22: {"leitura": "Espelhos em continuidade.",
+        "entrada": "T2 e T3 com 1 vizinho",
+        "cobertura": "12, 21, 13, 31, 23, 32",},
     23: {
         "leitura": "Zero conectado ao terminal 5.",
         "entrada": "T3 e T6 com 1 vizinho",
@@ -109,8 +111,8 @@ ESTRATEGIAS = {
     },
     25: {
         "leitura": "Terminal 5 isolado com vizinhança.",
-        "entrada": "T5 e T0 com 1 vizinho",
-        "cobertura": "T1 / T4",
+        "entrada": "T5 e T2 com 1 vizinho",
+        "cobertura": "T6 / T4",
     },
     26: {
         "leitura": "Terminal 6.",
@@ -125,13 +127,13 @@ ESTRATEGIAS = {
     },
     29: {
         "leitura": "Terminal 9 conexão com o zero.",
-        "entrada": "T9 e T0 com 1 vizinho",
-        "cobertura": "T6 / T1",
+        "entrada": "T9 e T7 com 1 vizinho",
+        "cobertura": "T8 / T6",
     },
     30: {
         "leitura": "Terminal 0 fluxo lateral.",
         "entrada": "T3 e T6 com 1 vizinho",
-        "cobertura": "T4 / T9",
+        "cobertura": "T5 / T9",
     },
     31: {
         "leitura": "Continuidade de espelhos.",

@@ -4,6 +4,7 @@ from datetime import datetime
 
 from config.settings import Settings
 from core.monitor import GameMonitor
+from core.async_strategy import AsyncStrategySearcher
 from engine import (
     StrategyState,
     pre_process_strategies,
@@ -125,6 +126,77 @@ def run_bot():
     context_filter = ContextFilter()
     turbulence_monitor = TurbulenceMonitor(bot)
 
+    # Buscador de estratégia assíncrono: a IA (Ollama) roda fora do loop.
+    searcher = AsyncStrategySearcher()
+
+    def aplicar_sinal(base_num: int, signal: dict):
+        """Aplica um sinal pronto (vindo da busca async) na thread principal."""
+        if strategy_state.active or not signal or not signal.get("strategy"):
+            return
+        if base_num in Settings.FORBIDDEN_NUMBERS:
+            return
+
+        raw_strategy = signal["strategy"]
+        entry_targets = signal["entry_targets"]
+        protection_targets = signal["protection_targets"]
+        confidence = signal["confidence"]
+
+        # INVARIANTE bet==display: nunca ativa/envia um sinal cuja entrada
+        # EXIBIDA (texto) e APOSTADA (alvos) não sejam ambas reais e não-vazias.
+        # Blinda contra exibir "Entrada: ..." e apostar em outra coisa (ou nada)
+        # — ex.: estratégias de entrada vazia + alvos vindos da IA.
+        if not entry_targets or not str(raw_strategy.get("entrada", "")).strip():
+            logger.debug(
+                f"⛔ Sinal base {base_num} ignorado: entrada vazia "
+                f"(alvos={len(entry_targets)}, texto={raw_strategy.get('entrada')!r})."
+            )
+            return
+
+        ai_block = ""
+        if signal.get("ai_used") and signal.get("ai_decision"):
+            ai_decision = signal["ai_decision"]
+            risk_emoji = {"low": "🟢", "medium": "🟡", "high": "🔴"}.get(
+                ai_decision.get("risk_level", "medium"), "🟡"
+            )
+            ai_block = (
+                f"🧠 IA ({ai_decision.get('confidence', 0)}% • {risk_emoji}):\n"
+                f"{ai_decision.get('reasoning', '')}\n\n"
+            )
+
+        # Zero = cobertura FIXA do operador (sempre coberto, ficha reforçada).
+        # A lógica já conta 0 como green (process_number); o display reflete isso
+        # -> mantém a invariante bet == display.
+        cobertura = str(raw_strategy.get("cobertura", "")).strip()
+        cobertura_hud = f"{cobertura} + Zero" if cobertura else "Zero"
+
+        time_now = datetime.now().strftime("%H:%M")
+        msg_completa = (
+            "🍀Entrada Confirmada🍀\n"
+            f"🕒 {time_now}\n"
+            f"📍 Número base: {base_num}\n\n"
+            f"🎯 Entrada:\n{raw_strategy['entrada']}\n\n"
+            f"🛡️ Proteção:\n{cobertura}\n\n"
+            f"🟢 Zero: sempre coberto (ficha reforçada)\n\n"
+            f"🧠 Leitura: {raw_strategy['leitura']}\n\n"
+            f"{ai_block}"
+            f"⏱️ Gestão:\nAté 3 proteções.\nSem insistência.\n\n"
+            f"💰 Gestão Sugerida: Ficha Base de {signal.get('kelly_stake', 1.0):.1f}% da Banca\n"
+            f"👤 Crupiê: {signal.get('dealer', 'Default')}"
+        )
+        logger.info(f"✅ Estratégia confirmada para {base_num}. Confiança: {confidence}%")
+        # Envia ao HUD local IMEDIATAMENTE (não espera o Telegram).
+        send_signal_to_bridge(
+            number=base_num,
+            strategy=raw_strategy["entrada"],
+            protection=cobertura_hud,
+            leitura=raw_strategy["leitura"],
+            confidence=confidence,
+            kelly_stake=signal.get("kelly_stake", 1.0),
+            dealer=signal.get("dealer", "Default"),
+        )
+        strategy_state.activate(base_num, base_num, entry_targets, protection_targets)
+        bot.enviar_evento("SIGNAL", msg_completa)
+
     # Inicia Backup Automático e Listener de Comandos
     backup_system.start()
     bot.start_listener(reporting)
@@ -156,10 +228,17 @@ def run_bot():
         last_heartbeat = time.time()
 
         while True:
+            # CONSOME resultado da busca de IA assíncrona (se houver), na thread
+            # principal -> aplica o sinal sem nenhuma corrida de estado.
+            pending = searcher.poll()
+            if pending and not strategy_state.active:
+                p_base, p_signal = pending
+                aplicar_sinal(p_base, p_signal)
+
             # Captura novo número (Utiliza MutationObserver no container estendido)
             numero_str = monitor.watch()
             if not numero_str:
-                time.sleep(1)
+                time.sleep(0.2)  # detecção mais responsiva (push é event-driven)
                 continue
 
             numero = int(numero_str)
@@ -364,97 +443,30 @@ def run_bot():
                     logger.info("Terminais bagunçados detectados.")
                     wait_rounds = 2  # Pausa por 2 giros
 
-            # 8. Busca nova estratégia (Modelo Alert-Only: Nunca Bloqueia)
-            if not strategy_state.active and can_search_strategy:
-                # Captura o crupiê ativo na tela
+            # 8. Busca nova estratégia (ASSÍNCRONA: a IA roda fora do loop).
+            # Dispara a busca e segue na hora; o resultado é aplicado no topo do
+            # loop por aplicar_sinal() assim que a IA responder (single-flight).
+            if (
+                not strategy_state.active
+                and can_search_strategy
+                and numero not in Settings.FORBIDDEN_NUMBERS
+                and not searcher.busy
+            ):
                 active_dealer = monitor.get_current_dealer()
-                
-                # SEMPRE busca estratégia, independente de warming_up ou turbulência
-                signal = run_engine(
+                searcher.submit(
                     history=history_buffer.get_all(),
-                    memory_agent=memory_agent,
                     base=numero,
-                    dealer=active_dealer
+                    dealer=active_dealer,
+                    memory_agent=memory_agent,
                 )
-                if numero not in Settings.FORBIDDEN_NUMBERS and signal["strategy"]:
-                    # LOG DE VALIDAÇÃO: Turbulência informativa não impede entrada
-                    if has_turbulence and info.get("type") != "warming_up":
-                        logger.info(
-                            f"⚠️ Block ignorado por modo informativo de turbulência. Entrada para {numero} segue normalmente."
-                        )
-
-                    raw_strategy = signal["strategy"]
-                    entry_targets = signal["entry_targets"]
-                    protection_targets = signal["protection_targets"]
-                    confidence = signal["confidence"]
-                    reasoning = signal["reasoning"]
-
-                    # Bloco IA (se disponível)
-                    ai_block = ""
-                    if signal.get("ai_used") and signal.get("ai_decision"):
-                        ai_decision = signal["ai_decision"]
-                        risk_emoji = {"low": "🟢", "medium": "🟡", "high": "🔴"}.get(
-                            ai_decision.get("risk_level", "medium"), "🟡"
-                        )
-                        ai_block = (
-                            f"🧠 IA ({ai_decision.get('confidence', 0)}% • {risk_emoji}):\n"
-                            f"{ai_decision.get('reasoning', '')}\n\n"
-                        )
-
-                    time_now = datetime.now().strftime("%H:%M")
-                    msg_completa = (
-                        "🍀Entrada Confirmada🍀\n"
-                        f"🕒 {time_now}\n"
-                        f"📍 Número base: {numero}\n\n"
-                        f"🎯 Entrada:\n{raw_strategy['entrada']}\n\n"
-                        f"🛡️ Proteção:\n{raw_strategy.get('cobertura', '')}\n\n"
-                        f"🧠 Leitura: {raw_strategy['leitura']}\n\n"
-                        f"{ai_block}"
-                        f"⏱️ Gestão:\nAté 3 proteções.\nSem insistência.\n\n"
-                        f"💰 Gestão Sugerida: Ficha Base de {signal.get('kelly_stake', 1.0):.1f}% da Banca\n"
-                        f"👤 Crupiê: {signal.get('dealer', 'Default')}"
-                    )
-                    logger.info(
-                        f"✅ Estratégia confirmada para {numero}. Confiança: {confidence}%"
-                    )
-                    logger.info(f"Razão: {reasoning}")
-                    # OTIMIZAÇÃO CRÍTICA DE LATÊNCIA: Envia ao HUD local imediatamente sem esperar o Telegram
-                    send_signal_to_bridge(
-                        number=numero,
-                        strategy=raw_strategy["entrada"],
-                        protection=raw_strategy.get("cobertura", ""),
-                        leitura=raw_strategy["leitura"],
-                        confidence=confidence,
-                        kelly_stake=signal.get("kelly_stake", 1.0),
-                        dealer=signal.get("dealer", "Default")
-                    )
-                    strategy_state.activate(
-                        numero, numero, entry_targets, protection_targets
-                    )
-
-                    # Envia ao Telegram (independente, sem bloquear a atualização instantânea do HUD)
-                    try:
-                        bot.enviar_evento("SIGNAL", msg_completa)
-                    except Exception as telegram_err:
-                        logger.warning(
-                            f"⚠️ Atraso ou erro no envio ao Telegram: {telegram_err}"
-                        )
-                else:
-                    # LOG: Motivo exato de não enviar entrada
-                    if numero in Settings.FORBIDDEN_NUMBERS:
-                        logger.debug(
-                            f"🚫 Número {numero} está na lista FORBIDDEN_NUMBERS. Sem estratégia."
-                        )
-                    else:
-                        logger.debug(
-                            f"📭 Sem estratégia registrada para o número {numero}."
-                        )
 
             if time.time() - last_heartbeat > 60:
                 logger.info("Heartbeat: Sistema ativo")
                 last_heartbeat = time.time()
 
-            time.sleep(0.5)
+            # Loop mais curto: detecção é push event-driven e precisamos
+            # consumir o resultado da IA assíncrona rapidamente (poll no topo).
+            time.sleep(0.2)
 
     except Exception as e:
         logger.error(f"Erro na execução da sessão: {e}", exc_info=True)
@@ -508,7 +520,7 @@ def main():
 
                 logger.info("Enviando relatório de encerramento...")
                 relatorio = reporting.get_weekly_report(clean=True)
-                bot.enviar(relatorio)
+                bot.enviar_blocking(relatorio, timeout=10)  # garantido antes de sair
             except:
                 pass
             break

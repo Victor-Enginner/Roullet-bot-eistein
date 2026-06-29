@@ -2,6 +2,7 @@ import math
 import json
 import os
 import logging
+import threading
 from typing import List, Dict, Optional, Tuple
 
 logger = logging.getLogger("ai.smart_brain")
@@ -296,12 +297,27 @@ class SmartBrain:
 
     def __init__(self, profiles_path: str = "data/croupier_profiles.json"):
         if not hasattr(self, "initialized"):
+            # Lock reentrante: a busca de estratégia agora roda numa thread
+            # separada (AsyncStrategySearcher) enquanto a thread principal pode
+            # tocar os mesmos objetos no win/loss. Protege o dict de crupiês
+            # contra "dict changed size during iteration" e inserções em corrida.
+            self._lock = threading.RLock()
             self.profiles_path = profiles_path
             self.croupiers: Dict[str, CroupierSignatureTracker] = {}
             self.q_learning = MesaQLearning()
             self.rag = SessionMemoryRAG()
             self.initialized = True
             self.load_croupier_profiles()
+
+    def sync_croupier_history(self, name: str, history: list):
+        """Reseta e repopula o histórico do tracker de um crupiê (thread-safe).
+        Usado pelo worker de IA para alimentar a assinatura geométrica."""
+        with self._lock:
+            tracker = self.get_croupier_tracker(name)
+            tracker.history = []
+            for num in history[-15:]:
+                tracker.add_spin(num)
+            return tracker
 
     def load_croupier_profiles(self):
         if os.path.exists(self.profiles_path):
@@ -318,7 +334,10 @@ class SmartBrain:
     def save_croupier_profiles(self):
         try:
             os.makedirs(os.path.dirname(self.profiles_path), exist_ok=True)
-            data = {name: tracker.history for name, tracker in self.croupiers.items()}
+            # Snapshot sob lock: evita "dict changed size during iteration" se o
+            # worker de IA inserir um crupiê novo durante o salvamento.
+            with self._lock:
+                data = {name: list(tracker.history) for name, tracker in self.croupiers.items()}
             with open(self.profiles_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
         except Exception as e:
@@ -326,9 +345,10 @@ class SmartBrain:
 
     def get_croupier_tracker(self, name: str) -> CroupierSignatureTracker:
         name = name.strip() or "Default"
-        if name not in self.croupiers:
-            self.croupiers[name] = CroupierSignatureTracker()
-        return self.croupiers[name]
+        with self._lock:
+            if name not in self.croupiers:
+                self.croupiers[name] = CroupierSignatureTracker()
+            return self.croupiers[name]
 
     def calculate_kelly_fraction(self, confidence: int) -> float:
         """

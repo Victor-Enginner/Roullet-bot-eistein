@@ -66,5 +66,260 @@
     ],
     "avg_win_rate": 1.0,
     "description": "Sessão real registrada com 68 giros."
+  },
+  {
+    "session_id": "117",
+    "terminals_freq": [
+      13,
+      13,
+      13,
+      12,
+      16,
+      4,
+      10,
+      10,
+      4,
+      4
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 69 giros."
+  },
+  {
+    "session_id": "118",
+    "terminals_freq": [
+      16,
+      7,
+      33,
+      7,
+      9,
+      2,
+      7,
+      2,
+      13,
+      4
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 45 giros."
+  },
+  {
+    "session_id": "119",
+    "terminals_freq": [
+      7,
+      15,
+      8,
+      8,
+      10,
+      11,
+      15,
+      4,
+      7,
+      13
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 71 giros."
+  },
+  {
+    "session_id": "120",
+    "terminals_freq": [
+      9,
+      7,
+      5,
+      7,
+      7,
+      7,
+      36,
+      7,
+      5,
+      7
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 55 giros."
+  },
+  {
+    "session_id": "121",
+    "terminals_freq": [
+      9,
+      11,
+      14,
+      7,
+      2,
+      7,
+      18,
+      2,
+      14,
+      16
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 44 giros."
+  },
+  {
+    "session_id": "125",
+    "terminals_freq": [
+      16,
+      4,
+      3,
+      8,
+      8,
+      5,
+      16,
+      10,
+      19,
+      10
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 73 giros."
+  },
+  {
+    "session_id": "126",
+    "terminals_freq": [
+      10,
+      8,
+      11,
+      12,
+      12,
+      12,
+      15,
+      6,
+      3,
+      10
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 72 giros."
+  },
+  {
+    "session_id": "127",
+    "terminals_freq": [
+      10,
+      2,
+      16,
+      10,
+      6,
+      16,
+      16,
+      10,
+      10,
+      6
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 63 giros."
+  },
+  {
+    "session_id": "128",
+    "terminals_freq": [
+      26,
+      0,
+      11,
+      21,
+      5,
+      16,
+      5,
+      11,
+      5,
+      0
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 19 giros."
+  },
+  {
+    "session_id": "129",
+    "terminals_freq": [
+      17,
+      2,
+      9,
+      20,
+      20,
+      11,
+      11,
+      6,
+      2,
+      2
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 54 giros."
+  },
+  {
+    "session_id": "130",
+    "terminals_freq": [
+      17,
+      6,
+      10,
+      6,
+      8,
+      12,
+      10,
+      12,
+      6,
+      10
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 48 giros."
+  },
+  {
+    "session_id": "131",
+    "terminals_freq": [
+      13,
+      3,
+      10,
+      10,
+      3,
+      18,
+      11,
+      13,
+      10,
+      8
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 61 giros."
+  },
+  {
+    "session_id": "132",
+    "terminals_freq": [
+      9,
+      9,
+      10,
+      10,
+      7,
+      16,
+      11,
+      10,
+      10,
+      9
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 70 giros."
+  },
+  {
+    "session_id": "133",
+    "terminals_freq": [
+      14,
+      9,
+      9,
+      5,
+      9,
+      9,
+      5,
+      23,
+      9,
+      9
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 22 giros."
+  },
+  {
+    "session_id": "135",
+    "terminals_freq": [
+      3,
+      8,
+      11,
+      10,
+      13,
+      20,
+      8,
+      10,
+      10,
+      7
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 71 giros."
   }
 ]

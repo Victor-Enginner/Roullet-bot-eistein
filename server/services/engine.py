@@ -73,11 +73,9 @@ def run_engine(
         from ai.smart_brain import SmartBrain
         smart_brain = SmartBrain()
         # Sincroniza histórico para a assinatura geométrica do crupiê específico
+        # (thread-safe: roda no worker de IA em paralelo à thread principal).
         if history:
-            tracker = smart_brain.get_croupier_tracker(dealer)
-            tracker.history = []
-            for num in history[-15:]:
-                tracker.add_spin(num)
+            smart_brain.sync_croupier_history(dealer, history)
         
         # Pega as calibrações de peso (Q-Learning e RAG de Sessão)
         q_weight = smart_brain.q_learning.get_weight(base)
@@ -124,12 +122,19 @@ def run_engine(
                         # Adiciona vizinhos geométricos do cilindro aos alvos alternativos
                         ai_decision.alternative_targets = list(set(ai_decision.alternative_targets + predicted_sector))
 
-                # IA como consultora: mistura inteligente
-                # Se IA diz should_enter=False com confiança alta, anula entrada
+                # IA como CONSULTORA: ela ajusta CONFIANÇA e parecer, mas NUNCA
+                # troca os alvos. O que o bot APOSTA tem que ser SEMPRE igual ao
+                # que ele EXIBE (ex.: "T1 e T3").
+                # [BUGFIX] Antes, quando a IA contraindicava (should_enter=False,
+                # conf>=70), o código fazia `entry_targets = []` e logo abaixo
+                # substituía pelos alternative_targets da IA — enquanto o Telegram
+                # seguia mostrando "T1 e T3". O bot apostava num conjunto diferente
+                # do exibido e greens reais (ex.: 23 em T3) viravam proteção.
                 if not ai_decision.should_enter and ai_decision.confidence >= 70:
-                    confidence = ai_decision.confidence
-                    reasoning = f"🧠 IA contraindicou: {ai_decision.reasoning}"
-                    entry_targets = []  # zera entrada (caller deve checar)
+                    # Contraindicação: MANTÉM os alvos clássicos exibidos, mas
+                    # rebaixa a confiança (Kelly mais conservador) e marca cautela.
+                    confidence = max(10, int(confidence * 0.5))
+                    reasoning = f"🧠 IA cautelosa (não recomenda forçar): {ai_decision.reasoning or reasoning}"
                 else:
                     # Média ponderada: 40% clássica + 60% IA
                     confidence = int(confidence * 0.4 + ai_decision.confidence * 0.6)
@@ -138,7 +143,9 @@ def run_engine(
                     confidence = max(0, min(100, confidence))
                     reasoning = ai_decision.reasoning or reasoning
 
-                # Se IA sugeriu alvos alternativos e entrada clássica está vazia
+                # Só PREENCHE com alvos da IA quando a entrada clássica está
+                # GENUINAMENTE vazia (estratégia sem entrada definida). Nunca
+                # substitui uma entrada já existente/exibida.
                 if not entry_targets and ai_decision.alternative_targets:
                     entry_targets = ai_decision.alternative_targets
 

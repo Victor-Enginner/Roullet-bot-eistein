@@ -1,9 +1,21 @@
+import os
 import time
 import json
+import base64
+import threading
+import collections
 from datetime import datetime
 from playwright.sync_api import sync_playwright, Error
 from config.settings import Settings
 from utils.logger import setup_logger
+
+# Decodificador do protobuf Playtech (fonte PRIMÁRIA do número no modo híbrido).
+# Import tolerante: se falhar, o monitor cai 100% no DOM/MutationObserver.
+try:
+    from core.playtech_decoder import parse_frame, extract_roulette_number, get_path
+    _DECODER_OK = True
+except Exception as _dec_err:  # pragma: no cover
+    _DECODER_OK = False
 
 logger = setup_logger('monitor')
 
@@ -78,6 +90,107 @@ class GameMonitor:
         self.console_errors = []
         self.last_activity_time = time.time()
 
+        # Sink em disco dos frames BRUTOS do WebSocket ptielive (protobuf).
+        # Serializa as gravações (os callbacks do Playwright são single-thread,
+        # mas o lock protege caso múltiplos WS disparem em sequência).
+        self._ptielive_frames_path = Settings.PTIELIVE_FRAMES_FILE
+        self._ptielive_lock = threading.Lock()
+
+        # PUSH event-driven: o MutationObserver (JS) empurra o número direto
+        # para esta fila via binding 'antigravityPush' -> zero polling CDP.
+        # No modo híbrido, o protobuf também alimenta ESTA MESMA fila.
+        self._spin_queue = collections.deque(maxlen=50)
+        self._spin_lock = threading.Lock()
+        self._binding_ready = False
+
+        # --- Detecção HÍBRIDA: protobuf (primário) + DOM (fallback) ---
+        # round_ids de gameRoundOver já ingeridos (dedup da fonte protobuf).
+        self._seen_rounds = set()
+        # timestamp da última entrega do protobuf (saúde da fonte primária).
+        self._last_protobuf_ts = 0.0
+        # quantos números o protobuf já entregou (>0 => fonte primária viva).
+        self._protobuf_count = 0
+        # estado de fallback (p/ logar só na transição, sem spam).
+        self._fallback_active = False
+        self._PROTOBUF_HEALTHY_WINDOW = Settings.PROTOBUF_HEALTHY_WINDOW
+
+        # Cache do crupiê (raramente muda): evita varrer 8 seletores em todos
+        # os frames a cada giro (eram dezenas de round-trips CDP por número).
+        self._dealer_cache = "Default"
+        self._dealer_cache_time = 0.0
+        self._DEALER_TTL = 30.0
+
+        # --- AUTO-RECONEXÃO (transmissão caiu / age gate) ---
+        self._no_container_count = 0      # checagens seguidas sem o container
+        self._last_recovery_time = 0.0    # cooldown entre tentativas de recuperação
+        self._RECOVERY_COOLDOWN = 30.0
+
+    def _push_spin(self, value):
+        """Callback do binding JS (DOM): número novo direto do MutationObserver.
+
+        No modo híbrido, o DOM é FALLBACK: se o protobuf (fonte primária) já
+        entregou um número há pouco, o do DOM é redundante e é descartado
+        (evita contagem dupla). O DOM só passa quando o protobuf está em
+        silêncio — aí o fallback reassume sozinho.
+        """
+        try:
+            s = str(value).strip()
+            if not s.isdigit():
+                return
+            with self._spin_lock:
+                if Settings.PROTOBUF_PRIMARY and self._protobuf_count > 0:
+                    silence = time.time() - self._last_protobuf_ts
+                    if silence < self._PROTOBUF_HEALTHY_WINDOW:
+                        # Protobuf saudável já cobriu esta rodada -> descarta DOM.
+                        if self._fallback_active:
+                            self._fallback_active = False
+                            logger.info("✅ [Híbrido] Protobuf normalizado — DOM volta a standby.")
+                        return
+                    # Protobuf em silêncio prolongado -> FALLBACK para o DOM.
+                    if not self._fallback_active:
+                        self._fallback_active = True
+                        logger.warning(
+                            f"⚠️ [Fallback] Protobuf em silêncio há {silence:.0f}s — "
+                            "usando DOM/MutationObserver."
+                        )
+                self._spin_queue.append(s)
+        except Exception:
+            pass
+
+    def _ingest_ptielive_frame(self, raw_bytes):
+        """Fonte PRIMÁRIA: extrai o número sorteado de um frame protobuf do
+        gateway ielive e o empurra para a fila (mesma fila do DOM).
+
+        Usa só 'gameRoundOver' (mensagem autoritativa de fim de rodada) e
+        deduplica por round_id (#3.11) — garante exatamente 1 número por rodada,
+        sem leitura dupla (que o DOM ocasionalmente comete).
+        """
+        if not (_DECODER_OK and Settings.PROTOBUF_PRIMARY) or not raw_bytes:
+            return
+        try:
+            frame = parse_frame(raw_bytes)
+            mtype = frame.get("type") or ""
+            if "gameRoundOver" not in mtype:
+                return
+            num = extract_roulette_number(raw_bytes)
+            if num is None:
+                return
+            rid = get_path(frame.get("payload") or [], (11,))
+            round_id = rid[0] if rid else None
+            with self._spin_lock:
+                if round_id is not None and round_id in self._seen_rounds:
+                    return  # rodada já ingerida
+                if round_id is not None:
+                    self._seen_rounds.add(round_id)
+                    if len(self._seen_rounds) > 500:
+                        self._seen_rounds = set(list(self._seen_rounds)[-250:])
+                self._spin_queue.append(str(num))
+                self._last_protobuf_ts = time.time()
+                self._protobuf_count += 1
+            logger.info(f"🎯 [Protobuf] Rodada {round_id}: número {num} (fonte primária)")
+        except Exception as e:
+            logger.debug(f"Falha ao ingerir frame protobuf: {e}")
+
     def start(self):
         """Inicia o navegador com perfil persistente (Singleton)"""
         if GameMonitor._active:
@@ -100,7 +213,20 @@ class GameMonitor:
             )
             self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
             self._attach_debug_listeners()
-            
+
+            # PUSH event-driven: expõe o binding ANTES de navegar, para ficar
+            # disponível como init-script em todos os frames (incl. iframes da
+            # Playtech). O observer JS chama window.antigravityPush(numero).
+            try:
+                self.context.expose_binding(
+                    "antigravityPush",
+                    lambda source, value: self._push_spin(value),
+                )
+                self._binding_ready = True
+                logger.info("✅ Binding 'antigravityPush' exposto (detecção event-driven).")
+            except Exception as bind_err:
+                logger.warning(f"Não foi possível expor binding de push (usando fallback): {bind_err}")
+
             logger.info("Navegando para a Home da GeralBet...")
             self.page.goto("https://geralbet.bet.br/", timeout=60000)
             
@@ -134,7 +260,12 @@ class GameMonitor:
             self.websocket_urls.append(ws.url)
             logger.info(f"🌐 WebSocket detectado: {ws.url}")
 
+            # Só os frames do gateway Playtech carregam o protobuf do sorteio;
+            # avaliado uma vez por WS pois a URL é fixa ao longo da conexão.
+            is_ptielive = "ptielive" in (ws.url or "")
+
             def remember_frame(direction, payload):
+                # Mantém o comportamento em memória (truncado) p/ os demais dumps.
                 text = str(payload)
                 self.websocket_frames.append({
                     "direction": direction,
@@ -144,8 +275,20 @@ class GameMonitor:
                 if len(self.websocket_frames) > 100:
                     self.websocket_frames = self.websocket_frames[-100:]
 
-            ws.on("framereceived", lambda payload: remember_frame("received", payload))
-            ws.on("framesent", lambda payload: remember_frame("sent", payload))
+            def on_frame(direction, payload):
+                remember_frame(direction, payload)
+                if is_ptielive:
+                    # FONTE PRIMÁRIA (ao vivo): só frames recebidos (resultado
+                    # vem do servidor) e binários (protobuf). Extrai o número
+                    # direto do stream antes mesmo de renderizar na tela.
+                    if direction == "received" and isinstance(payload, (bytes, bytearray)):
+                        self._ingest_ptielive_frame(bytes(payload))
+                    # Captura opcional p/ análise offline (mesma de antes).
+                    if Settings.CAPTURE_PTIELIVE_FRAMES:
+                        self._write_ptielive_frame(direction, ws.url, payload)
+
+            ws.on("framereceived", lambda payload: on_frame("received", payload))
+            ws.on("framesent", lambda payload: on_frame("sent", payload))
 
         def on_request_failed(request):
             failure = request.failure or ""
@@ -163,6 +306,39 @@ class GameMonitor:
         self.page.on("websocket", on_websocket)
         self.page.on("requestfailed", on_request_failed)
         self.page.on("console", on_console)
+
+    def _write_ptielive_frame(self, direction, url, payload):
+        """Grava UM frame BRUTO do WS ptielive em logs/ptielive_frames.jsonl.
+
+        Uma linha = um objeto JSON, com o payload completo (sem truncar) em
+        base64. Esse arquivo é o input exato de tools/pb_correlate.py, que
+        decodifica o protobuf e crava qual campo carrega o número sorteado.
+
+        O payload do Playwright pode vir como bytes (frame binário) ou str
+        (frame de texto). Bytes são codificados crus; str é codificada em
+        UTF-8 antes do base64 — em ambos os casos sem perda.
+        """
+        try:
+            if isinstance(payload, (bytes, bytearray)):
+                raw = bytes(payload)
+            else:
+                raw = str(payload).encode("utf-8")
+
+            record = {
+                "direction": direction,
+                "url": url,
+                "ts": int(time.time() * 1000),
+                "payload_b64": base64.b64encode(raw).decode("ascii"),
+            }
+            line = json.dumps(record, ensure_ascii=False)
+
+            # open-per-write + flush: garante que cada frame sobreviva a um crash.
+            with self._ptielive_lock:
+                with open(self._ptielive_frames_path, "a", encoding="utf-8") as fh:
+                    fh.write(line + "\n")
+                    fh.flush()
+        except Exception as e:
+            logger.debug(f"Falha ao gravar frame ptielive no jsonl: {e}")
 
     def _dump_debug_state(self, label):
         """Salva estado da página para diagnosticar iframe/DOM travado."""
@@ -382,8 +558,15 @@ class GameMonitor:
                                 const val = textElem.innerText ? textElem.innerText.trim() : '';
                                 if (val && !isNaN(val)) {
                                     window.antigravity_last_number = val;
-                                    window.antigravity_new_spin = true;
                                     window.antigravity_observer_count++;
+                                    // PUSH event-driven: empurra direto pro Python (zero polling).
+                                    // Se o binding não existir, cai no flag (compat).
+                                    if (typeof window.antigravityPush === 'function') {
+                                        try { window.antigravityPush(val); }
+                                        catch (e) { window.antigravity_new_spin = true; }
+                                    } else {
+                                        window.antigravity_new_spin = true;
+                                    }
                                 }
                             }
                         }
@@ -417,24 +600,38 @@ class GameMonitor:
         try:
             self.watch_count += 1
             
-            # Simulação periódica de atividade para evitar desconexão (a cada 3 minutos)
-            if time.time() - self.last_activity_time > 180:
+            # Simulação periódica de atividade para evitar desconexão (a cada 90s)
+            if time.time() - self.last_activity_time > 90:
                 self.simulate_activity()
                 self.last_activity_time = time.time()
                 
             target_frame = self.working_frame if self.working_frame else self.page
-            
-            # 1. PRIORIDADE: MutationObserver (event-driven, sem delay)
+
+            # 0. CAMINHO RÁPIDO: fila de PUSH (event-driven, ZERO round-trip CDP).
+            # O observer JS já entregou o número via binding; só drenamos aqui.
+            with self._spin_lock:
+                if self._spin_queue:
+                    valor = self._spin_queue.popleft()
+                    self.last_number = valor
+                    logger.info(f"✅ [Push] Número novo detectado: {valor}")
+                    return valor
+
+            # 1. PRIORIDADE: MutationObserver via flag (fallback se push falhar)
             if self.observer_active:
                 try:
-                    has_new = target_frame.evaluate("window.antigravity_new_spin")
-                    if has_new:
-                        valor = target_frame.evaluate("window.antigravity_last_number")
-                        target_frame.evaluate("window.antigravity_new_spin = false")
-                        if valor and str(valor).strip().isdigit():
-                            self.last_number = str(valor).strip()
-                            logger.info(f"✅ [Observer] Número novo detectado: {self.last_number}")
-                            return self.last_number
+                    # OTIMIZAÇÃO: lê o flag, captura o valor e reseta o flag em
+                    # UMA única chamada CDP (antes eram 3 round-trips por número).
+                    # Cada evaluate() é uma ida-e-volta pelo protocolo DevTools
+                    # (~1-5ms); a 10Hz isso somava ~30ms/giro à toa.
+                    valor = target_frame.evaluate(
+                        "() => { if (window.antigravity_new_spin) {"
+                        " const v = window.antigravity_last_number;"
+                        " window.antigravity_new_spin = false; return v; } return null; }"
+                    )
+                    if valor is not None and str(valor).strip().isdigit():
+                        self.last_number = str(valor).strip()
+                        logger.info(f"✅ [Observer] Número novo detectado: {self.last_number}")
+                        return self.last_number
                     elif self.last_number is not None:
                         return None  # Sem mutação detectada
                 except Exception as e:
@@ -445,9 +642,17 @@ class GameMonitor:
             # 2. FALLBACK: Polling DOM (apenas se observer não funcionar)
             container = self._find_extended_container()
             if not container:
+                # DETECÇÃO DE QUEDA: o container (histórico) sumiu por várias
+                # checagens seguidas -> a transmissão caiu (age gate/reload).
+                # Dispara a recuperação automática.
+                self._no_container_count += 1
+                if self._no_container_count >= 30:  # ~6s seguidos sem container
+                    self._recover_connection()
+                    self._no_container_count = 0
                 if self.watch_count % 40 == 0:
                     logger.warning("Container estendido não encontrado. Verificando...")
                 return None
+            self._no_container_count = 0  # container presente -> conexão viva
 
             if self.working_number_selector:
                 try:
@@ -546,8 +751,81 @@ class GameMonitor:
         except Exception as e:
             logger.debug(f"Erro ao simular atividade do usuário: {e}")
 
+    def _dismiss_blockers(self):
+        """Fecha popups que bloqueiam a roleta (age gate '18 anos', cookies)."""
+        if not self.page:
+            return
+        textos = ["Sim", "✓ Sim", "Aceitar tudo", "Aceitar", "Concordo", "Entendi"]
+        contextos = [self.page]
+        try:
+            contextos += list(self.page.frames)
+        except Exception:
+            pass
+        for ctx in contextos:
+            for t in textos:
+                try:
+                    loc = ctx.get_by_text(t, exact=True)
+                    if loc.count() > 0 and loc.first.is_visible(timeout=300):
+                        loc.first.click(timeout=1500)
+                        logger.info(f"🟢 [Recover] Popup fechado: '{t}'")
+                        time.sleep(0.4)
+                except Exception:
+                    continue
+
+    def _recover_connection(self):
+        """Reconecta sozinho quando a transmissão cai (age gate / reload da página)."""
+        now = time.time()
+        if now - self._last_recovery_time < self._RECOVERY_COOLDOWN:
+            return
+        self._last_recovery_time = now
+        logger.warning("🔌 [Recover] Transmissão caiu — recuperando conexão automaticamente...")
+        try:
+            # 1. Fecha popups (age gate, cookies)
+            self._dismiss_blockers()
+
+            # 2. Se saiu da roleta, re-navega para a URL do jogo (perfil persistente = já logado)
+            game_url = os.getenv("GAME_URL") or "https://geralbet.bet.br/games/playtech/roleta-brasileira"
+            try:
+                cur = (self.page.url or "").lower()
+            except Exception:
+                cur = ""
+            if "roleta" not in cur and "playtech" not in cur:
+                logger.info(f"🔄 [Recover] Re-navegando para {game_url}")
+                try:
+                    self.page.goto(game_url, timeout=60000)
+                except Exception as nav_err:
+                    logger.warning(f"[Recover] Erro ao re-navegar: {nav_err}")
+                time.sleep(3)
+                self._dismiss_blockers()
+
+            try:
+                self.page.wait_for_load_state("load", timeout=30000)
+            except Exception:
+                pass
+            time.sleep(2)
+            self._dismiss_blockers()
+
+            # 3. Re-descobre o container e religa o observer
+            self.working_frame = None
+            container = self._find_extended_container()
+            if not container:
+                self._try_open_extended_history()
+                container = self._find_extended_container()
+            if container:
+                self._setup_mutation_observer()
+                logger.info("✅ [Recover] Reconectado — observer reativado. Voltando a monitorar.")
+            else:
+                logger.warning("⚠️ [Recover] Ainda sem histórico. Nova tentativa no próximo ciclo.")
+        except Exception as e:
+            logger.error(f"[Recover] Falha na recuperação: {e}")
+
     def get_current_dealer(self) -> str:
-        """Tenta encontrar o nome do crupiê (dealer) ativo na tela"""
+        """Tenta encontrar o nome do crupiê (dealer) ativo na tela (com cache TTL)"""
+        now = time.time()
+        # Cache: o crupiê muda a cada ~20-40 min, não a cada giro. Reaproveita.
+        if now - self._dealer_cache_time < self._DEALER_TTL:
+            return self._dealer_cache
+
         selectors = [
             "[class*='dealer-name']",
             "[class*='dealerName']",
@@ -558,6 +836,9 @@ class GameMonitor:
             "[data-automation-locator*='dealer']",
             "[data-automation-locator*='presenter']",
         ]
+        # Atualiza o timestamp do cache ANTES da busca: mesmo que não ache nada,
+        # evitamos repetir a varredura cara a cada giro durante o TTL.
+        self._dealer_cache_time = now
         for sel in selectors:
             try:
                 el = self._find_in_frames(sel)
@@ -568,10 +849,12 @@ class GameMonitor:
                         name = name.replace(prefix, "")
                     name = name.strip()
                     if name:
+                        self._dealer_cache = name
                         return name
             except:
                 continue
-        return "Default"
+        # Não encontrou: mantém o último conhecido (ou "Default") por todo o TTL.
+        return self._dealer_cache
 
     def stop(self):
         logger.info("Encerrando monitor...")

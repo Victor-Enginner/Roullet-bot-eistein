@@ -20,6 +20,7 @@ from engine import (
     ESTRATEGIAS,
 )
 from engine.parser import parse_strategy_targets, parse_protection_targets
+from core.async_strategy import AsyncStrategySearcher
 from utils.logger import setup_logger
 from analytics.metrics import Metrics, HealthMonitor
 from storage.database import Database
@@ -118,6 +119,46 @@ def main():
     context_filter = ContextFilter()
     turbulence_monitor = TurbulenceMonitor(bot)
 
+    # Buscador de estratégia assíncrono: a IA (Ollama) roda fora do loop.
+    searcher = AsyncStrategySearcher()
+
+    def aplicar_sinal(base_num: int, signal: dict):
+        """Aplica um sinal pronto (vindo da busca async) na thread principal."""
+        if strategy_state.active or not signal or not signal.get("strategy"):
+            return
+        if base_num in Settings.FORBIDDEN_NUMBERS:
+            return
+        raw_strategy = signal["strategy"]
+        entry_targets = signal["entry_targets"]
+        protection_targets = signal["protection_targets"]
+        # INVARIANTE bet==display: não ativa sinal com entrada vazia (sem alvos
+        # OU sem texto exibível) — blinda contra apostar em algo diferente do
+        # que é mostrado no HUD/Telegram.
+        if not entry_targets or not str(raw_strategy.get("entrada", "")).strip():
+            logger.debug(f"⛔ Sinal base {base_num} ignorado: entrada vazia.")
+            return
+        # Zero = cobertura FIXA do operador (display = aposta).
+        cobertura = str(raw_strategy.get("cobertura", "")).strip()
+        cobertura_hud = f"{cobertura} + Zero" if cobertura else "Zero"
+        # Envia ao HUD local IMEDIATAMENTE (não espera o Telegram).
+        send_signal_to_bridge(
+            number=base_num,
+            strategy=raw_strategy["entrada"],
+            protection=cobertura_hud,
+            leitura=raw_strategy["leitura"],
+            confidence=signal["confidence"],
+            kelly_stake=signal.get("kelly_stake", 1.0),
+            dealer=signal.get("dealer", "Default"),
+        )
+        strategy_state.activate(base_num, base_num, entry_targets, protection_targets)
+        logger.info(
+            f"✅ Estratégia confirmada para {base_num}. Confiança: {signal['confidence']}%"
+        )
+        try:
+            bot.enviar(format_telegram_message(signal))
+        except Exception as telegram_err:
+            logger.warning(f"⚠️ Erro no envio ao Telegram: {telegram_err}")
+
     # Inicia Backup Automático e Listener de Comandos
     backup_system.start()
     bot.start_listener(reporting)
@@ -140,6 +181,15 @@ def main():
         # Blocos de instrução manual não necessários (WS é automático)
         logger.info("Monitor iniciado. Aguardando pacotes do socket...")
 
+        # OTIMIZAÇÃO: pré-carrega o modelo Ollama na memória/GPU AGORA, no
+        # startup, para que a 1ª inferência real não pague o custo de carga do
+        # modelo (vários segundos) durante um giro ao vivo.
+        try:
+            from ai.ollama_agent import get_analyst
+            get_analyst().preload()
+        except Exception as preload_err:
+            logger.warning(f"Não foi possível pré-carregar a IA: {preload_err}")
+
         stats = db.get_statistics()
         logger.info(f"Estatísticas: {stats['total_numbers']} números")
 
@@ -147,6 +197,12 @@ def main():
         last_heartbeat = time.time()
 
         while True:
+            # CONSOME resultado da busca de IA assíncrona (thread principal).
+            pending = searcher.poll()
+            if pending and not strategy_state.active:
+                p_base, p_signal = pending
+                aplicar_sinal(p_base, p_signal)
+
             # Pega o último número conhecido pelo socket (agora retorna dicio com token)
             data_socket = monitor.watch()
             numero_atual_socket = data_socket.get("number")
@@ -363,55 +419,22 @@ def main():
                         logger.info("Terminais bagunçados detectados.")
                         wait_rounds = 2  # Pausa por 2 giros
 
-                # 8. Busca nova estratégia (Pausa durante turbulência)
+                # 8. Busca nova estratégia (ASSÍNCRONA: a IA roda fora do loop).
+                # Dispara e segue; aplicar_sinal() consome o resultado no topo do
+                # loop assim que a IA responder (single-flight).
                 if (
                     not strategy_state.active
                     and can_search_strategy
                     and not turbulence_monitor.paused
+                    and not searcher.busy
                 ):
-                    # Busca crupiê se o monitor possuir o método
                     active_dealer = monitor.get_current_dealer() if hasattr(monitor, "get_current_dealer") else "Default"
-                    
-                    # SEMPRE busca estratégia, independente de warming_up ou turbulência
-                    signal = run_engine(
+                    searcher.submit(
                         history=history_buffer.get_all(),
-                        memory_agent=memory_agent,
                         base=numero,
-                        dealer=active_dealer
+                        dealer=active_dealer,
+                        memory_agent=memory_agent,
                     )
-                    if signal["strategy"]:
-                        raw_strategy = signal["strategy"]
-                        entry_targets = signal["entry_targets"]
-                        protection_targets = signal["protection_targets"]
-                        confidence = signal["confidence"] / 100  # 0-1 for bridge
-                        reasoning = signal["reasoning"]
-
-                        # OTIMIZAÇÃO CRÍTICA DE LATÊNCIA: Envia ao HUD local e ativa estado imediatamente
-                        send_signal_to_bridge(
-                            number=numero,
-                            strategy=raw_strategy["entrada"],
-                            protection=raw_strategy.get("cobertura", ""),
-                            leitura=raw_strategy["leitura"],
-                            confidence=signal["confidence"],
-                            kelly_stake=signal.get("kelly_stake", 1.0),
-                            dealer=signal.get("dealer", "Default")
-                        )
-                        strategy_state.activate(
-                            numero, numero, entry_targets, protection_targets
-                        )
-
-                        # Envia ao Telegram (independente, sem bloquear a atualização instantânea do HUD)
-                        msg_completa = format_telegram_message(signal)
-                        logger.info(
-                            f"✅ Estratégia confirmada para {numero}. Confiança: {signal['confidence']}%"
-                        )
-                        logger.info(f"Razão: {reasoning}")
-                        try:
-                            bot.enviar(msg_completa)
-                        except Exception as telegram_err:
-                            logger.warning(
-                                f"⚠️ Atraso ou erro no envio ao Telegram: {telegram_err}"
-                            )
                 # FIM DO PIPELINE
 
             else:
@@ -430,7 +453,9 @@ def main():
         try:
             logger.info("Enviando relatório de encerramento...")
             relatorio = reporting.get_weekly_report(clean=True)
-            bot.enviar(relatorio)
+            # Envio SÍNCRONO garantido: a fila assíncrona pode não drenar antes
+            # do processo morrer no shutdown.
+            bot.enviar_blocking(relatorio, timeout=10)
         except Exception as report_err:
             logger.error(f"Erro ao enviar relatório de encerramento: {report_err}")
 
@@ -453,6 +478,12 @@ def main():
         except Exception as rag_err:
             logger.warning(f"Erro ao salvar dados do SmartBrain na finalização: {rag_err}")
 
+        # Drena as filas assíncronas antes de encerrar (não perde os últimos
+        # números nem mensagens pendentes do Telegram).
+        try:
+            bot.flush(timeout=8)
+        except Exception:
+            pass
         db.end_session(session_id, metrics.numbers_detected, metrics.errors_count)
         monitor.stop()
 

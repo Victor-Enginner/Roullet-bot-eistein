@@ -57,6 +57,28 @@ class Settings:
     # Playwright Configuration
     HEADLESS = os.getenv("HEADLESS", "False").lower() == "true"
 
+    # Captura de frames BRUTOS do WebSocket Playtech (ptielive) em
+    # logs/ptielive_frames.jsonl — input exato consumido por
+    # tools/pb_correlate.py para cravar o campo do número sorteado.
+    # Ligado por padrão; só grava para URLs que contenham "ptielive".
+    CAPTURE_PTIELIVE_FRAMES = (
+        os.getenv("CAPTURE_PTIELIVE_FRAMES", "True").lower() == "true"
+    )
+    PTIELIVE_FRAMES_FILE = LOGS_DIR / "ptielive_frames.jsonl"
+
+    # --- Detecção HÍBRIDA do número (protobuf primário + DOM fallback) ---
+    # Quando ligado, o número é extraído direto do stream protobuf do gateway
+    # ielive (mais rápido e preciso — sem leitura dupla do DOM). O
+    # MutationObserver continua como FALLBACK automático: se o protobuf ficar
+    # em silêncio (protocolo mudou/quebrou), o DOM reassume sozinho.
+    PROTOBUF_PRIMARY = (
+        os.getenv("PROTOBUF_PRIMARY", "True").lower() == "true"
+    )
+    # Janela (s) após uma entrega do protobuf na qual o número do DOM é
+    # considerado redundante e descartado. Cobre o atraso de render do DOM
+    # (~1-3s) e fica bem abaixo do intervalo entre rodadas (~30-60s).
+    PROTOBUF_HEALTHY_WINDOW = float(os.getenv("PROTOBUF_HEALTHY_WINDOW", "12"))
+
     @classmethod
     def ensure_dirs(cls):
         """Ensure necessary directories exist"""

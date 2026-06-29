@@ -69,7 +69,7 @@ FORMATO DE RESPOSTA (JSON estrito, sem markdown):
 {
   "should_enter": <bool>,
   "confidence": <inteiro 0-100>,
-  "reasoning": "<máx 250 caracteres, parecer científico objetivo em português, justificando o risco e a densidade estatística>",
+  "reasoning": "<máx 120 caracteres, 1 frase objetiva em português justificando o risco/densidade estatística>",
   "alternative_targets": [<lista de inteiros 0-36, pode ser vazia, contendo vizinhos geométricos ou terminais quentes alinhados>],
   "risk_level": "<low|medium|high>"
 }
@@ -238,7 +238,7 @@ class OllamaAnalyst:
         self,
         model: Optional[str | List[str]] = None,
         host: str = "http://127.0.0.1:11434",
-        timeout: float = 5.0,
+        timeout: float = 20.0,
         enabled: bool = True,
         min_confidence: int = 30,
         cache_ttl: int = 60,
@@ -271,7 +271,11 @@ class OllamaAnalyst:
 
         self.model = self.models[0]
         self.host = host
-        self.timeout = timeout
+        # Timeout configurável por env. O DEFAULT (20s) precisa ser MAIOR que o
+        # cold start do modelo na CPU (~6s no i7-3770S) — senão o preload e a 1ª
+        # chamada morrem antes do modelo terminar de carregar e a IA NUNCA aquece.
+        env_timeout = os.getenv("OLLAMA_TIMEOUT")
+        self.timeout = float(env_timeout) if env_timeout else timeout
         self.enabled = enabled
         self.min_confidence = min_confidence
         self.cache_ttl = cache_ttl
@@ -304,6 +308,11 @@ class OllamaAnalyst:
         """Testa se Ollama está rodando e o modelo está disponível."""
         if not self.enabled or not OLLAMA_AVAILABLE:
             return False
+        # OTIMIZAÇÃO: se já confirmamos disponibilidade, NÃO refaz client.list()
+        # a cada análise (isso era um round-trip HTTP extra no hot path antes
+        # de toda inferência). Uma falha real em analyze() reseta _available.
+        if self._available is True:
+            return True
         if self._available is False:
             if time.time() - self._last_failure_time < self._failure_cooldown:
                 return False
@@ -438,8 +447,11 @@ class OllamaAnalyst:
                         format="json",
                         options={
                             "temperature": 0.1,    # mais determinístico e rápido
-                            "num_predict": 150,    # limite menor de tokens na resposta para velocidade máxima
+                            "num_predict": 160,    # margem p/ o JSON fechar mesmo se o modelo ignorar o limite de chars (evita None)
                             "top_p": 0.9,
+                            "top_k": 20,           # reduz o espaço de amostragem -> menos cálculo por token
+                            "num_ctx": 1536,       # contexto enxuto = prefill mais rápido
+                            "stop": ["```"],       # NÃO usar "}\n" como stop (cortava o JSON antes do fim)
                         },
                         keep_alive=-1,  # mantém modelo na GPU/memória indefinidamente
                     )
