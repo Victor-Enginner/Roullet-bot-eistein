@@ -170,6 +170,17 @@ def run_bot():
         cobertura_hud = f"{cobertura} + Zero" if cobertura else "Zero"
 
         time_now = datetime.now().strftime("%H:%M")
+
+        # SPRINT 5: aviso (não trunca) quando a cobertura excede o teto
+        # prático da ficha de aposta do cassino (~20 posições).
+        total_numeros_sinal = len(set(entry_targets) | set(protection_targets))
+        aviso_limite_ficha = (
+            f"\n\n⚠️ Sinal com {total_numeros_sinal} números — pode exceder o "
+            f"limite da ficha do cassino (~{Settings.MAX_BET_SLOTS})."
+            if total_numeros_sinal > Settings.MAX_BET_SLOTS
+            else ""
+        )
+
         msg_completa = (
             "🍀Entrada Confirmada🍀\n"
             f"🕒 {time_now}\n"
@@ -182,8 +193,37 @@ def run_bot():
             f"⏱️ Gestão:\nAté 3 proteções.\nSem insistência.\n\n"
             f"💰 Gestão Sugerida: Ficha Base de {signal.get('kelly_stake', 1.0):.1f}% da Banca\n"
             f"👤 Crupiê: {signal.get('dealer', 'Default')}"
+            f"{aviso_limite_ficha}"
         )
         logger.info(f"✅ Estratégia confirmada para {base_num}. Confiança: {confidence}%")
+
+        # --- SPRINT 2: Validação de estratégia real (feedback loop) ---
+        # Bloqueia novas entradas para estratégias com winrate real ruim,
+        # desde que já existam amostras suficientes (nunca bloqueia com
+        # poucos dados). strategy_id == base_num (ver strategy_state.activate).
+        if tracker.should_block(
+            base_num,
+            min_winrate=Settings.STRATEGY_MIN_WINRATE,
+            min_samples=Settings.STRATEGY_MIN_SAMPLES,
+        ):
+            winrate_pct = tracker.get_winrate(base_num)
+            total_amostras = tracker.stats.get(base_num, {}).get("total", 0)
+            logger.info(
+                f"🚫 Estratégia #{base_num} BLOQUEADA por performance real ruim "
+                f"(winrate={winrate_pct:.1f}% em {total_amostras} amostras, "
+                f"mínimo {Settings.STRATEGY_MIN_WINRATE * 100:.0f}%)."
+            )
+            try:
+                bot.enviar_imediato(
+                    "🚫 Entrada BLOQUEADA (performance real)\n"
+                    f"📍 Número base: {base_num}\n"
+                    f"📊 Winrate real: {winrate_pct:.1f}% em {total_amostras} amostras\n"
+                    f"Mínimo exigido: {Settings.STRATEGY_MIN_WINRATE * 100:.0f}%. Sinal descartado."
+                )
+            except Exception as block_notify_err:
+                logger.warning(f"Erro ao notificar bloqueio de estratégia: {block_notify_err}")
+            return
+
         # Envia ao HUD local IMEDIATAMENTE (não espera o Telegram).
         send_signal_to_bridge(
             number=base_num,
@@ -226,6 +266,7 @@ def run_bot():
         logger.info(f"Estatísticas: {stats['total_numbers']} números salvos")
 
         last_heartbeat = time.time()
+        last_dealer = None  # rastreia o crupiê para detectar troca
 
         while True:
             # CONSOME resultado da busca de IA assíncrona (se houver), na thread
@@ -261,6 +302,25 @@ def run_bot():
                 dealer=active_dealer,
                 status_tick=True
             )
+
+            # TROCA DE CRUPIÊ -> pausa de análise: lê o "movimento" do novo dealer
+            # por N giros antes de voltar a entrar (disciplina; cobre homem->mulher).
+            if (last_dealer is not None and active_dealer and active_dealer != "Default"
+                    and active_dealer != last_dealer):
+                wait_rounds = max(wait_rounds, Settings.WAIT_ROUNDS_AFTER_DEALER_CHANGE)
+                logger.info(
+                    f"👤 Crupiê trocou: {last_dealer} → {active_dealer}. "
+                    f"Pausando {wait_rounds} giros para análise."
+                )
+                try:
+                    bot.enviar_imediato(
+                        f"👤 Troca de crupiê: {last_dealer} → {active_dealer}\n"
+                        f"Aguardando {wait_rounds} giros para ler o movimento."
+                    )
+                except Exception:
+                    pass
+            if active_dealer and active_dealer != "Default":
+                last_dealer = active_dealer
 
             # 0. Atualiza memória de transições e detecta padrões (Somente após 60 giros)
             transition_memory.update(history_buffer.get_last(2))

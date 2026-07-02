@@ -2,17 +2,24 @@
 (function () {
     console.log("🧠 Einstein Roulette AI HUD Content Script loaded!");
 
-    // O HUD é desenhado DENTRO do frame do jogo (por isso aparece sobre a
-    // roleta). Pulamos apenas os iframes minúsculos de tracking/anúncio (que
-    // não comportam o painel) — assim evitamos HUDs duplicados em frames inúteis
-    // SEM esconder o HUD do frame do jogo. Frames grandes (topo + jogo) renderizam.
+    // Só renderiza em páginas de CASSINO/ROLETA — evita o orb aparecer em TODAS
+    // as abas (gmail, youtube, etc.). Detecta pela URL do próprio frame, dos
+    // frames ancestrais (o frame do jogo é filho do cassino) ou do referrer.
     try {
+        var _self = (location.hostname + location.pathname).toLowerCase();
+        var _anc = "";
+        try { _anc = Array.prototype.join.call(location.ancestorOrigins || [], " ").toLowerCase(); } catch (e) {}
+        var _ref = (document.referrer || "").toLowerCase();
+        var _isCasino = /geralbet|7k|playtech|ptielive|cactusgaming|techonlinecorp|cassino|casino|roleta|roulette/
+            .test(_self + " " + _anc + " " + _ref);
+        if (!_isCasino) return;  // aba/frame fora do cassino -> sem HUD
+        // pula iframes minúsculos de tracking/anúncio (não comportam o painel)
         if (window.top !== window.self &&
             (window.innerWidth < 320 || window.innerHeight < 320)) {
             return;
         }
     } catch (e) {
-        // cross-origin: por segurança, deixa renderizar
+        return;  // erro inesperado -> não renderiza (seguro)
     }
 
     // Prevents double injection
@@ -249,6 +256,9 @@
     }
 
     function playSynthSound(type) {
+        // Som APENAS no frame de topo -> evita o win duplicado (o HUD pode
+        // renderizar em mais de um frame, mas só um toca o som).
+        if (window.top !== window.self) return;
         try {
             const ctx = getAudioContext();
             if (!ctx || ctx.state === "suspended") {

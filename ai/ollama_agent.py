@@ -93,6 +93,7 @@ def _build_user_prompt(
     stats: Dict[str, int],
     analysis: Dict[str, Any],
     current_number: int,
+    rag_context: Optional[str] = None,
 ) -> str:
     """Monta o prompt com os dados de mercado para o LLM analisar."""
 
@@ -113,6 +114,11 @@ def _build_user_prompt(
 
     entrada = strategy.get("entrada") or "(sem entrada)"
     cobertura = strategy.get("cobertura") or "(sem cobertura)"
+
+    # Contexto semântico do RAG de memória de sessões (SPRINT 4). Texto real
+    # recuperado da sessão passada mais similar (não um escalar isolado).
+    # Opcional: se não vier, o bloco simplesmente não aparece no prompt.
+    rag_block = f"\nMEMÓRIA DE SESSÕES SIMILARES (RAG):\n{rag_context}\n" if rag_context else ""
 
     return f"""DADOS DE MERCADO (roleta europeia):
 
@@ -137,7 +143,7 @@ ANÁLISE DE MERCADO (últimos 500 giros):
 - Números quentes: {hot}
 - Números frios: {cold}
 - Terminais dominantes: {terms_str}
-
+{rag_block}
 Analise e responda em JSON conforme o formato definido."""
 
 
@@ -356,10 +362,11 @@ class OllamaAnalyst:
 
     # ----- Cache -----
 
-    def _cache_key(self, base: int, history_tail: List[int]) -> str:
-        # Hash dos últimos 10 números + base
+    def _cache_key(self, base: int, history_tail: List[int], rag_context: Optional[str] = None) -> str:
+        # Hash dos últimos 10 números + base + contexto RAG (se houver)
         sample = ",".join(str(n) for n in history_tail[-10:])
-        return hashlib.md5(f"{base}|{sample}".encode()).hexdigest()
+        rag_part = rag_context or ""
+        return hashlib.md5(f"{base}|{sample}|{rag_part}".encode()).hexdigest()
 
     def _get_cached(self, key: str) -> Optional[AIResponse]:
         if key in self._cache:
@@ -389,9 +396,16 @@ class OllamaAnalyst:
         stats: Dict[str, int],
         analysis: Dict[str, Any],
         current_number: Optional[int] = None,
+        rag_context: Optional[str] = None,
     ) -> Optional[AIResponse]:
         """
         Consulta o LLM e devolve uma AIResponse ou None em caso de falha.
+
+        Args:
+            rag_context: texto opcional recuperado do RAG de memória de
+                sessões (ai.smart_brain.SessionMemoryRAG.query_similar_session_context)
+                com a descrição real da sessão passada mais similar. Se
+                fornecido, é injetado como contexto adicional no prompt.
 
         Retorna None se:
         - enabled=False
@@ -410,8 +424,9 @@ class OllamaAnalyst:
         current_number = current_number if current_number is not None else base
         history_tail = history[-50:] if len(history) > 50 else history
 
-        # Verifica cache
-        cache_key = self._cache_key(base, history_tail)
+        # Verifica cache (inclui o contexto RAG na chave: um contexto novo
+        # pode mudar a análise mesmo com o mesmo histórico recente)
+        cache_key = self._cache_key(base, history_tail, rag_context)
         cached = self._get_cached(cache_key)
         if cached is not None:
             logger.debug(f"IA: cache hit para base {base}")
@@ -424,6 +439,7 @@ class OllamaAnalyst:
             stats=stats,
             analysis=analysis,
             current_number=current_number,
+            rag_context=rag_context,
         )
 
         client = self._get_client()

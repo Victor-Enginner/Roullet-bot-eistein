@@ -217,3 +217,18 @@ class TelegramBot:
             except Exception as e:
                 logger.error(f"Erro no /vies: {e}")
                 self.enviar("🔬 Caça-viés falhou ao rodar. Veja o log.")
+        elif cmd == "/quentes":
+            # Números quentes: frequência na janela recente de giros salvos no banco.
+            try:
+                from analytics.hot_numbers import get_hot_numbers
+                top, sample_size = get_hot_numbers()
+                if sample_size == 0:
+                    self.enviar("🔥 Números quentes: ainda não há giros salvos no banco.")
+                else:
+                    lista = ", ".join(f"{numero}({contagem}x)" for numero, contagem in top)
+                    self.enviar(
+                        f"🔥 Números quentes (últimos {sample_size} giros salvos): {lista}"
+                    )
+            except Exception as e:
+                logger.error(f"Erro no /quentes: {e}")
+                self.enviar("🔥 Números quentes falhou ao rodar. Veja o log.")

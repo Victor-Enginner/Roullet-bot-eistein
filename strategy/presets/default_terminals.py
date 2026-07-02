@@ -68,7 +68,7 @@ ESTRATEGIAS = {
     15: {
         "leitura": "Terminal 5 conectado ao zero.",
         "entrada": "T5 e T0 com 1 vizinho",
-        "cobertura": "T6 / T4",
+        "cobertura": "T2 / T4",
     },
     16: {
         "leitura": "Terminal 6.",

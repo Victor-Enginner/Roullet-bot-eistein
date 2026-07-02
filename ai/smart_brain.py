@@ -3,9 +3,24 @@ import json
 import os
 import logging
 import threading
+import time
 from typing import List, Dict, Optional, Tuple
 
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+    requests = None  # type: ignore
+
+from config.settings import Settings
+
 logger = logging.getLogger("ai.smart_brain")
+
+# Config de embeddings via Ollama local (SPRINT 4 — RAG semântico real).
+RAG_EMBEDDING_MODEL = Settings.RAG_EMBEDDING_MODEL
+RAG_EMBEDDING_HOST = Settings.RAG_EMBEDDING_HOST
+RAG_EMBEDDING_TIMEOUT = Settings.RAG_EMBEDDING_TIMEOUT
 
 # Layout oficial do cilindro da roleta europeia (single zero)
 WHEEL_LAYOUT = [
@@ -165,10 +180,31 @@ class SessionMemoryRAG:
     """
     RAG de Memória de Sessões. Armazena e recupera comportamentos
     de sessões passadas com distribuições semelhantes de terminais.
+
+    SPRINT 4: usa embeddings semânticos reais (Ollama local, modelo
+    RAG_EMBEDDING_MODEL) gerados a partir de um texto descritivo real da
+    sessão (terminais dominantes + estratégias + win rate observado).
+    Se o Ollama/modelo de embedding não estiver disponível, cai de volta
+    (fallback) para a heurística antiga de similaridade de cosseno sobre o
+    vetor de 10 frequências de terminais — o bot NUNCA deve quebrar por
+    falta de um modelo de embedding local.
+
+    Nunca mistura dado inventado/mockado com dado real de sessão no cálculo
+    de confiança: o banco só contém sessões efetivamente registradas pelo
+    bot (save_current_session_profile). Se não houver nenhuma sessão real
+    ainda, a consulta retorna a assertividade neutra padrão (0.80) em vez
+    de inventar um "perfil de referência".
     """
     def __init__(self, file_path: str = "data/session_memory_rag.json"):
         self.file_path = file_path
         self.sessions: List[Dict] = []
+        self._embedding_fallback_logged = False
+        # Cooldown de falha: se o endpoint de embeddings do Ollama falhar
+        # (fora do ar, sem o modelo, etc.), evita tentar de novo a cada
+        # consulta/salvamento de sessão — isso adicionaria latência de rede
+        # (timeout) a cada chamada num bot que roda em tempo real.
+        self._embedding_unavailable_since: float = 0.0
+        self._embedding_failure_cooldown: float = 300.0  # 5 minutos
         self.load_database()
 
     def load_database(self):
@@ -179,34 +215,11 @@ class SessionMemoryRAG:
             except Exception as e:
                 logger.warning(f"Erro ao carregar banco RAG: {e}")
                 self.sessions = []
-        
-        # Cria banco RAG inicial caso vazio
-        if not self.sessions:
-            self._create_mock_sessions()
 
-    def _create_mock_sessions(self):
-        # Perfis simulados de referência para busca inicial
-        self.sessions = [
-            {
-                "session_id": "profile_stable_low_terminals",
-                "terminals_freq": [15, 8, 5, 8, 12, 10, 8, 10, 12, 12],
-                "avg_win_rate": 0.88,
-                "description": "Mercado estável com dominância de terminais baixos (T0, T1, T4)"
-            },
-            {
-                "session_id": "profile_high_entropy_messy",
-                "terminals_freq": [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-                "avg_win_rate": 0.65,
-                "description": "Alta entropia, distribuição totalmente uniforme e caótica de terminais"
-            },
-            {
-                "session_id": "profile_cluster_geometric",
-                "terminals_freq": [5, 12, 15, 12, 8, 5, 12, 15, 8, 8],
-                "avg_win_rate": 0.82,
-                "description": "Sessão com forte atração geométrica nos setores do zero e vizinhos"
-            }
-        ]
-        self.save_database()
+        # SEM dados mockados: se o banco estiver vazio, permanece vazio até
+        # que sessões reais sejam registradas. Misturar perfis inventados
+        # com sessões reais no mesmo cálculo de similaridade contaminaria a
+        # confiança reportada ao bot (ver auditoria da SPRINT 4).
 
     def save_database(self):
         try:
@@ -216,15 +229,118 @@ class SessionMemoryRAG:
         except Exception as e:
             logger.warning(f"Erro ao salvar banco RAG: {e}")
 
-    def save_current_session_profile(self, session_id: str, history: List[int], win_rate: float):
-        """Salva o perfil da sessão corrente para aprendizado permanente."""
+    # ----- Texto descritivo real da sessão -----
+
+    def _build_session_text(
+        self,
+        history: List[int],
+        win_rate: float,
+        terminals_norm: List[int],
+        strategies_used: Optional[List[str]] = None,
+    ) -> str:
+        """Monta um texto descritivo real da sessão (para embedding semântico),
+        combinando terminais mais frequentes, estratégias usadas e win rate real
+        observado — em vez do vetor cru de 10 números."""
+        ranked_terms = sorted(range(10), key=lambda t: terminals_norm[t], reverse=True)
+        top_terms = ", ".join(f"T{t}({terminals_norm[t]}%)" for t in ranked_terms[:3])
+
+        if strategies_used:
+            strategies_str = ", ".join(strategies_used[:5])
+        else:
+            strategies_str = "n/d"
+
+        return (
+            f"Sessão de roleta com {len(history)} giros registrados. "
+            f"Terminais dominantes: {top_terms}. "
+            f"Estratégias utilizadas: {strategies_str}. "
+            f"Win rate real observado: {win_rate * 100:.1f}%."
+        )
+
+    # ----- Embeddings via Ollama (com fallback heurístico obrigatório) -----
+
+    def _get_ollama_embedding(self, text: str) -> Optional[List[float]]:
+        """Tenta gerar um embedding real via Ollama local. Retorna None (sem
+        levantar exceção) se o endpoint não responder ou o modelo não existir
+        localmente — quem chamar deve cair no fallback heurístico antigo.
+        Loga o modo fallback apenas uma vez para não poluir o log do bot.
+
+        Respeita um cooldown de falha: se a última tentativa falhou há menos
+        de _embedding_failure_cooldown segundos, nem tenta de novo (evita
+        pagar o custo de timeout de rede a cada consulta/salvamento de sessão
+        enquanto o Ollama/modelo estiver fora do ar)."""
+        if not REQUESTS_AVAILABLE:
+            self._log_embedding_fallback_once("biblioteca 'requests' indisponível")
+            return None
+
+        if self._embedding_unavailable_since > 0:
+            if time.time() - self._embedding_unavailable_since < self._embedding_failure_cooldown:
+                return None
+            # Cooldown expirou: tenta de novo silenciosamente
+
+        try:
+            resp = requests.post(
+                f"{RAG_EMBEDDING_HOST}/api/embeddings",
+                json={"model": RAG_EMBEDDING_MODEL, "prompt": text},
+                timeout=RAG_EMBEDDING_TIMEOUT,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            embedding = data.get("embedding")
+            if not embedding or not isinstance(embedding, list):
+                self._log_embedding_fallback_once(
+                    f"resposta do Ollama sem campo 'embedding' válido (modelo '{RAG_EMBEDDING_MODEL}')"
+                )
+                self._mark_embedding_unavailable()
+                return None
+            # Sucesso: limpa qualquer cooldown de falha anterior
+            self._embedding_unavailable_since = 0.0
+            return embedding
+        except Exception as e:
+            self._log_embedding_fallback_once(
+                f"Ollama/embeddings indisponível ou modelo '{RAG_EMBEDDING_MODEL}' não encontrado: {e}"
+            )
+            self._mark_embedding_unavailable()
+            return None
+
+    def _mark_embedding_unavailable(self):
+        self._embedding_unavailable_since = time.time()
+
+    def _log_embedding_fallback_once(self, reason: str):
+        if not self._embedding_fallback_logged:
+            logger.info(
+                f"🧠 [SmartBrain] RAG em modo fallback heurístico (sem embeddings semânticos). "
+                f"Motivo: {reason}. Usando similaridade de cosseno sobre frequência de terminais."
+            )
+            self._embedding_fallback_logged = True
+
+    @staticmethod
+    def _cosine_similarity(a: List[float], b: List[float]) -> float:
+        if not a or not b or len(a) != len(b):
+            return 0.0
+        dot_product = sum(x * y for x, y in zip(a, b))
+        norm_a = math.sqrt(sum(x**2 for x in a))
+        norm_b = math.sqrt(sum(y**2 for y in b))
+        if norm_a > 0 and norm_b > 0:
+            return dot_product / (norm_a * norm_b)
+        return 0.0
+
+    def save_current_session_profile(
+        self,
+        session_id: str,
+        history: List[int],
+        win_rate: float,
+        strategies_used: Optional[List[str]] = None,
+    ):
+        """Salva o perfil da sessão corrente para aprendizado permanente.
+        Persiste o texto descritivo real e, quando possível, o embedding
+        semântico real gerado via Ollama junto com a sessão."""
         if not history:
             return
-            
+
         terminals = [0] * 10
         for num in history:
             terminals[num % 10] += 1
-            
+
         # Normaliza frequências
         total = sum(terminals)
         if total > 0:
@@ -232,58 +348,99 @@ class SessionMemoryRAG:
         else:
             terminals_norm = [10] * 10
 
+        session_text = self._build_session_text(history, win_rate, terminals_norm, strategies_used)
+        embedding = self._get_ollama_embedding(session_text)
+
         profile = {
             "session_id": session_id,
             "terminals_freq": terminals_norm,
             "avg_win_rate": win_rate,
-            "description": f"Sessão real registrada com {len(history)} giros."
+            "description": f"Sessão real registrada com {len(history)} giros.",
+            "session_text": session_text,
+            "embedding": embedding,  # None se o Ollama/modelo não estava disponível
+            "embedding_model": RAG_EMBEDDING_MODEL if embedding is not None else None,
         }
-        
+
         # Evita duplicar sessão
         self.sessions = [s for s in self.sessions if s["session_id"] != session_id]
         self.sessions.append(profile)
         self.save_database()
         logger.info(f"💾 [SmartBrain] Perfil de sessão '{session_id}' salvo com sucesso no RAG.")
 
-    def query_similar_session_winrate(self, current_history: List[int]) -> float:
+    def query_similar_session_context(
+        self, current_history: List[int]
+    ) -> Tuple[float, str]:
         """
-        Calcula similaridade de cosseno entre a sessão atual e sessões passadas.
-        Retorna a assertividade esperada do perfil similar como calibrador.
+        Recupera a sessão mais similar à sessão atual e retorna tanto a
+        assertividade (win rate) esperada quanto o TEXTO descritivo da(s)
+        sessão(ões) similares, para injeção como contexto adicional no
+        prompt do LLM (ai/ollama_agent.py).
+
+        Tenta comparar por embedding semântico real (Ollama) quando a sessão
+        atual e as sessões salvas possuem embedding; cai de volta para a
+        heurística de cosseno sobre frequência de terminais caso contrário.
         """
         if not current_history or len(current_history) < 15:
-            return 0.80 # Assertividade neutra padrão
-            
+            return 0.80, "Sem contexto de sessões similares (histórico insuficiente)."
+
+        if not self.sessions:
+            return 0.80, "Nenhuma sessão real registrada ainda no RAG."
+
         current_terminals = [0] * 10
         for num in current_history:
             current_terminals[num % 10] += 1
-            
+        total = sum(current_terminals)
+        current_terminals_norm = (
+            [int(round((t / total) * 100)) for t in current_terminals] if total > 0 else [10] * 10
+        )
+        current_text = self._build_session_text(current_history, 0.0, current_terminals_norm)
+        current_embedding = self._get_ollama_embedding(current_text)
+
         best_similarity = -1.0
-        best_winrate = 0.80
-        best_profile_desc = "Nenhum perfil"
-        
+        best_session: Optional[Dict] = None
+        use_embeddings = current_embedding is not None
+
         for sess in self.sessions:
-            ref_terminals = sess["terminals_freq"]
-            
-            # Similaridade de Cosseno
-            dot_product = sum(a * b for a, b in zip(current_terminals, ref_terminals))
-            norm_a = math.sqrt(sum(a**2 for a in current_terminals))
-            norm_b = math.sqrt(sum(b**2 for b in ref_terminals))
-            
-            if norm_a > 0 and norm_b > 0:
-                similarity = dot_product / (norm_a * norm_b)
+            ref_embedding = sess.get("embedding")
+            if use_embeddings and ref_embedding:
+                similarity = self._cosine_similarity(current_embedding, ref_embedding)
             else:
-                similarity = 0.0
-                
+                # Fallback heurístico: vetor de 10 terminais + cosseno
+                ref_terminals = sess.get("terminals_freq", [])
+                similarity = self._cosine_similarity(
+                    [float(x) for x in current_terminals], [float(x) for x in ref_terminals]
+                )
+
             if similarity > best_similarity:
                 best_similarity = similarity
-                best_winrate = sess["avg_win_rate"]
-                best_profile_desc = sess["description"]
+                best_session = sess
+
+        if best_session is None:
+            return 0.80, "Nenhum perfil similar encontrado."
+
+        best_winrate = best_session.get("avg_win_rate", 0.80)
+        best_text = best_session.get("session_text") or best_session.get("description", "")
+        mode = "embedding semântico" if (use_embeddings and best_session.get("embedding")) else "heurística de terminais"
 
         logger.info(
-            f"🧠 [SmartBrain] Similaridade RAG: perfil '{best_profile_desc}' "
-            f"identificado com {best_similarity*100:.1f}% de compatibilidade. Assertividade base esperada: {best_winrate*100:.1f}%"
+            f"🧠 [SmartBrain] Similaridade RAG ({mode}): sessão '{best_session.get('session_id')}' "
+            f"identificada com {best_similarity*100:.1f}% de compatibilidade. Assertividade base esperada: {best_winrate*100:.1f}%"
         )
-        return best_winrate
+
+        context_text = (
+            f"[Memória RAG] Sessão passada mais similar ({best_similarity*100:.0f}% compatível): {best_text}"
+        )
+        return best_winrate, context_text
+
+    def query_similar_session_winrate(self, current_history: List[int]) -> float:
+        """
+        Retorna apenas a assertividade (win rate) esperada da sessão mais
+        similar. Mantido para compatibilidade com chamadores existentes
+        (ex.: server/services/engine.py) que só precisam do escalar.
+        Internamente usa a mesma lógica de query_similar_session_context.
+        """
+        winrate, _ = self.query_similar_session_context(current_history)
+        return winrate
 
 
 class SmartBrain:

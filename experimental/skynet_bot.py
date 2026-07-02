@@ -1,3 +1,11 @@
+# ⚠️⚠️⚠️ AVISO CRÍTICO - NÃO EXECUTAR EM PRODUÇÃO ⚠️⚠️⚠️
+# Este script realiza apostas AUTOMÁTICAS com dinheiro real.
+# As coordenadas de clique estão INCOMPLETAS (só 6 de 37 números mapeados).
+# Pode causar perda financeira se executado acidentalmente.
+# Use apenas em ambiente de teste/sandbox com coordenadas completas.
+# Movido para experimental/ em 2026-07-01 via SPRINT 0.
+# ⚠️⚠️⚠️
+
 import time
 import signal
 from typing import List

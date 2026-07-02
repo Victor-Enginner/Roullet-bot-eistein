@@ -24,12 +24,27 @@ class Settings:
     API_URL = os.getenv("API_URL")
     API_KEY = os.getenv("API_KEY")
     BET_AMOUNT = float(os.getenv("BET_AMOUNT", 10.0))
-    WAIT_ROUNDS_AFTER_WIN = int(os.getenv("WAIT_ROUNDS_AFTER_WIN", 1))
-    WAIT_ROUNDS_AFTER_ZERO = int(os.getenv("WAIT_ROUNDS_AFTER_ZERO", 5))
+    WAIT_ROUNDS_AFTER_WIN = int(os.getenv("WAIT_ROUNDS_AFTER_WIN", 2))   # pausa após green normal
+    WAIT_ROUNDS_AFTER_ZERO = int(os.getenv("WAIT_ROUNDS_AFTER_ZERO", 5))  # pausa quando o green é no 0
+    # Pausa de análise quando o CRUPIÊ TROCA (lê o "movimento" do novo dealer
+    # antes de voltar a entrar). Não muda a aleatoriedade da roda — é disciplina.
+    WAIT_ROUNDS_AFTER_DEALER_CHANGE = int(os.getenv("WAIT_ROUNDS_AFTER_DEALER_CHANGE", 5))
 
-    # Bloqueio de Números Base (User Request)
-    # Reativados em {{DATA}}: 0, 5, 8, 10
-    FORBIDDEN_NUMBERS = [7, 9, 11, 17, 22, 27, 33]
+    # Bloqueio de Números Base (User Request) — blacklist revisada em 2026-07-01.
+    # Gatilhos ativos (permitidos): 2,4,5,6,12,13,14,16,18,19,20,21,22,23,24,25,26,29,34,35
+    FORBIDDEN_NUMBERS = [7, 8, 9, 10, 11, 15, 17, 27, 28, 30, 33]
+
+    # SPRINT 2 — Validação de estratégia real (feedback loop por winrate).
+    STRATEGY_MIN_WINRATE = float(os.getenv("STRATEGY_MIN_WINRATE", 0.60))  # fração 0-1
+    STRATEGY_MIN_SAMPLES = int(os.getenv("STRATEGY_MIN_SAMPLES", 30))
+
+    # SPRINT 4 — RAG semântico real via embeddings Ollama (com fallback heurístico).
+    RAG_EMBEDDING_MODEL = os.getenv("RAG_EMBEDDING_MODEL", "nomic-embed-text")
+    RAG_EMBEDDING_HOST = os.getenv("RAG_EMBEDDING_HOST", "http://localhost:11434")
+    RAG_EMBEDDING_TIMEOUT = float(os.getenv("RAG_EMBEDDING_TIMEOUT", 5.0))
+
+    # SPRINT 5 — teto prático de posições na ficha de aposta do cassino (só aviso, não trunca).
+    MAX_BET_SLOTS = int(os.getenv("MAX_BET_SLOTS", 20))
 
     # Estatísticas e Turbulência
     STATS_WINDOW_SIZE = 60

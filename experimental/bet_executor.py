@@ -1,3 +1,11 @@
+# ⚠️⚠️⚠️ AVISO CRÍTICO - NÃO EXECUTAR EM PRODUÇÃO ⚠️⚠️⚠️
+# Esta classe realiza cliques programáticos de aposta com dinheiro real.
+# As coordenadas de clique estão INCOMPLETAS (só 6 de 37 números mapeados).
+# Pode causar perda financeira se executado acidentalmente.
+# Use apenas em ambiente de teste/sandbox com coordenadas completas.
+# Movido para experimental/ em 2026-07-01 via SPRINT 0.
+# ⚠️⚠️⚠️
+
 from playwright.sync_api import Page
 
 

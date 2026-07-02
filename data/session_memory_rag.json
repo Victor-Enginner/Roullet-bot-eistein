@@ -1,56 +1,5 @@
 [
   {
-    "session_id": "profile_stable_low_terminals",
-    "terminals_freq": [
-      15,
-      8,
-      5,
-      8,
-      12,
-      10,
-      8,
-      10,
-      12,
-      12
-    ],
-    "avg_win_rate": 0.88,
-    "description": "Mercado estável com dominância de terminais baixos (T0, T1, T4)"
-  },
-  {
-    "session_id": "profile_high_entropy_messy",
-    "terminals_freq": [
-      10,
-      10,
-      10,
-      10,
-      10,
-      10,
-      10,
-      10,
-      10,
-      10
-    ],
-    "avg_win_rate": 0.65,
-    "description": "Alta entropia, distribuição totalmente uniforme e caótica de terminais"
-  },
-  {
-    "session_id": "profile_cluster_geometric",
-    "terminals_freq": [
-      5,
-      12,
-      15,
-      12,
-      8,
-      5,
-      12,
-      15,
-      8,
-      8
-    ],
-    "avg_win_rate": 0.82,
-    "description": "Sessão com forte atração geométrica nos setores do zero e vizinhos"
-  },
-  {
     "session_id": "116",
     "terminals_freq": [
       7,
@@ -321,5 +270,218 @@
     ],
     "avg_win_rate": 1.0,
     "description": "Sessão real registrada com 71 giros."
+  },
+  {
+    "session_id": "139",
+    "terminals_freq": [
+      17,
+      8,
+      11,
+      7,
+      11,
+      4,
+      15,
+      7,
+      11,
+      7
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 71 giros."
+  },
+  {
+    "session_id": "141",
+    "terminals_freq": [
+      6,
+      19,
+      9,
+      28,
+      12,
+      3,
+      9,
+      0,
+      6,
+      6
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 32 giros."
+  },
+  {
+    "session_id": "142",
+    "terminals_freq": [
+      11,
+      14,
+      12,
+      6,
+      14,
+      11,
+      12,
+      10,
+      4,
+      6
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 72 giros."
+  },
+  {
+    "session_id": "143",
+    "terminals_freq": [
+      3,
+      9,
+      21,
+      3,
+      21,
+      6,
+      18,
+      6,
+      0,
+      15
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 34 giros."
+  },
+  {
+    "session_id": "144",
+    "terminals_freq": [
+      0,
+      14,
+      18,
+      4,
+      21,
+      14,
+      7,
+      0,
+      11,
+      11
+    ],
+    "avg_win_rate": 0.8,
+    "description": "Sessão real registrada com 28 giros."
+  },
+  {
+    "session_id": "146",
+    "terminals_freq": [
+      6,
+      17,
+      6,
+      7,
+      11,
+      14,
+      7,
+      11,
+      14,
+      8
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 72 giros."
+  },
+  {
+    "session_id": "148",
+    "terminals_freq": [
+      17,
+      17,
+      27,
+      13,
+      0,
+      7,
+      7,
+      7,
+      7,
+      0
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 30 giros."
+  },
+  {
+    "session_id": "149",
+    "terminals_freq": [
+      8,
+      14,
+      11,
+      7,
+      8,
+      11,
+      15,
+      8,
+      10,
+      8
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 73 giros."
+  },
+  {
+    "session_id": "151",
+    "terminals_freq": [
+      16,
+      10,
+      6,
+      10,
+      19,
+      19,
+      6,
+      0,
+      10,
+      3
+    ],
+    "avg_win_rate": 0.0,
+    "description": "Sessão real registrada com 31 giros."
+  },
+  {
+    "session_id": "154",
+    "terminals_freq": [
+      10,
+      6,
+      6,
+      15,
+      15,
+      15,
+      17,
+      8,
+      2,
+      6
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 48 giros.",
+    "session_text": "Sessão de roleta com 48 giros registrados. Terminais dominantes: T6(17%), T3(15%), T4(15%). Estratégias utilizadas: n/d. Win rate real observado: 100.0%.",
+    "embedding": null,
+    "embedding_model": null
+  },
+  {
+    "session_id": "156",
+    "terminals_freq": [
+      8,
+      4,
+      13,
+      7,
+      13,
+      15,
+      14,
+      14,
+      1,
+      10
+    ],
+    "avg_win_rate": 0.9166666666666666,
+    "description": "Sessão real registrada com 71 giros.",
+    "session_text": "Sessão de roleta com 71 giros registrados. Terminais dominantes: T5(15%), T6(14%), T7(14%). Estratégias utilizadas: n/d. Win rate real observado: 91.7%.",
+    "embedding": null,
+    "embedding_model": null
+  },
+  {
+    "session_id": "157",
+    "terminals_freq": [
+      10,
+      10,
+      7,
+      9,
+      12,
+      12,
+      9,
+      9,
+      7,
+      15
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 68 giros.",
+    "session_text": "Sessão de roleta com 68 giros registrados. Terminais dominantes: T9(15%), T4(12%), T5(12%). Estratégias utilizadas: n/d. Win rate real observado: 100.0%.",
+    "embedding": null,
+    "embedding_model": null
   }
 ]

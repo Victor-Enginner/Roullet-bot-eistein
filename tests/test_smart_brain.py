@@ -3,6 +3,7 @@ import os
 sys.path.append(os.getcwd())
 import unittest
 import shutil
+import json
 from ai.smart_brain import CroupierSignatureTracker, MesaQLearning, SessionMemoryRAG, SmartBrain, WHEEL_LAYOUT
 
 
@@ -67,19 +68,89 @@ class TestSmartBrain(unittest.TestCase):
         q.register_outcome(strategy_id, "loss")
         self.assertEqual(q.get_weight(strategy_id), 1.35)
 
-    def test_session_memory_rag(self):
+    def test_session_memory_rag_no_mock_data(self):
+        # SPRINT 4: o RAG NÃO deve mais criar perfis inventados (mock) na
+        # inicialização. Banco novo/vazio deve permanecer vazio até que
+        # sessões reais sejam registradas — nunca misturar dado fake com
+        # dado real no cálculo de confiança.
         rag = SessionMemoryRAG(file_path=self.rag_path)
-        
-        # Banco padrão criado na inicialização
-        self.assertTrue(len(rag.sessions) > 0)
-        
-        # Testa consulta com histórico fictício de terminais baixos
-        # Histórico com muitos números terminados em 0, 1 e 4 (T0, T1, T4)
+        self.assertEqual(rag.sessions, [])
+
+        # Sem nenhuma sessão real registrada, a consulta deve retornar a
+        # assertividade neutra padrão (0.80), não um perfil inventado.
         history = [0, 1, 4, 10, 11, 14, 20, 21, 24, 30, 31, 34, 0, 1, 4]
         winrate = rag.query_similar_session_winrate(history)
-        
-        # Deve casar com o perfil "profile_stable_low_terminals"
-        self.assertTrue(winrate > 0.80)
+        self.assertEqual(winrate, 0.80)
+
+    def test_session_memory_rag_real_session_roundtrip(self):
+        # Sem Ollama rodando neste ambiente de teste, a geração de embedding
+        # deve falhar silenciosamente e cair no fallback heurístico
+        # (vetor de 10 terminais + cosseno) SEM lançar exceção.
+        rag = SessionMemoryRAG(file_path=self.rag_path)
+
+        # Sessão real 1: dominância forte de terminais 0/1/4 (T0, T1, T4),
+        # win rate real observado alto.
+        history_a = [0, 1, 4, 10, 11, 14, 20, 21, 24, 30, 31, 34, 0, 1, 4]
+        rag.save_current_session_profile(
+            session_id="real_session_a",
+            history=history_a,
+            win_rate=0.90,
+            strategies_used=["T0 e T1 com 1 vizinho"],
+        )
+
+        # Sessão real 2: distribuição uniforme (alta entropia), win rate
+        # real observado baixo.
+        history_b = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        rag.save_current_session_profile(
+            session_id="real_session_b",
+            history=history_b,
+            win_rate=0.50,
+            strategies_used=["T2 e T3"],
+        )
+
+        # Só dados reais persistidos, nada de mock misturado.
+        self.assertEqual(len(rag.sessions), 2)
+        for sess in rag.sessions:
+            self.assertIn("session_text", sess)
+            self.assertIn("embedding", sess)  # None aqui (sem Ollama local)
+
+        # Consulta com histórico parecido com a sessão A (terminais 0/1/4
+        # dominantes) deve recuperar o win rate real da sessão A (0.90),
+        # não um valor inventado.
+        query_history = [0, 1, 4, 0, 1, 4, 10, 11, 14, 20, 21, 24, 30, 31, 34]
+        winrate, context_text = rag.query_similar_session_context(query_history)
+        self.assertEqual(winrate, 0.90)
+        # O texto retornado deve ser o contexto real da sessão (não um escalar)
+        self.assertIsInstance(context_text, str)
+        self.assertIn("giros", context_text)
+        self.assertIn("Win rate real observado", context_text)
+
+        # query_similar_session_winrate (compat) deve retornar o mesmo escalar
+        winrate_only = rag.query_similar_session_winrate(query_history)
+        self.assertEqual(winrate_only, 0.90)
+
+    def test_session_memory_rag_persists_to_disk(self):
+        rag = SessionMemoryRAG(file_path=self.rag_path)
+        rag.save_current_session_profile(
+            session_id="persisted_session",
+            history=[0, 1, 4, 10, 11, 14, 20, 21, 24, 30, 31, 34, 0, 1, 4],
+            win_rate=0.75,
+        )
+
+        self.assertTrue(os.path.exists(self.rag_path))
+        with open(self.rag_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["session_id"], "persisted_session")
+        self.assertIn("session_text", data[0])
+        # Nenhum perfil mockado deve ter sido reintroduzido no arquivo.
+        mock_ids = {
+            "profile_stable_low_terminals",
+            "profile_high_entropy_messy",
+            "profile_cluster_geometric",
+        }
+        self.assertFalse(any(s["session_id"] in mock_ids for s in data))
 
     def test_smart_brain_singleton(self):
         sb1 = SmartBrain(profiles_path="data/test_runs/croupier_profiles.json")
