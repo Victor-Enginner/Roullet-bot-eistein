@@ -1,112 +1,132 @@
 {
   "34": {
-    "wins": 2,
+    "wins": 3,
     "losses": 0,
-    "total": 2
+    "total": 3
   },
   "36": {
-    "wins": 2,
+    "wins": 3,
     "losses": 0,
-    "total": 2
+    "total": 3
   },
   "0": {
-    "wins": 2,
+    "wins": 6,
     "losses": 0,
-    "total": 2
+    "total": 6
   },
   "2": {
-    "wins": 1,
+    "wins": 4,
     "losses": 0,
-    "total": 1
+    "total": 4
   },
   "35": {
-    "wins": 4,
+    "wins": 6,
     "losses": 0,
-    "total": 4
+    "total": 6
   },
   "32": {
-    "wins": 3,
-    "losses": 0,
-    "total": 3
-  },
-  "20": {
-    "wins": 2,
-    "losses": 0,
-    "total": 2
-  },
-  "14": {
-    "wins": 1,
-    "losses": 0,
-    "total": 1
-  },
-  "13": {
     "wins": 4,
     "losses": 0,
     "total": 4
   },
-  "21": {
+  "20": {
     "wins": 3,
     "losses": 0,
     "total": 3
   },
-  "5": {
-    "wins": 1,
+  "14": {
+    "wins": 2,
     "losses": 0,
-    "total": 1
+    "total": 2
+  },
+  "13": {
+    "wins": 6,
+    "losses": 0,
+    "total": 6
+  },
+  "21": {
+    "wins": 5,
+    "losses": 0,
+    "total": 5
+  },
+  "5": {
+    "wins": 2,
+    "losses": 0,
+    "total": 2
   },
   "3": {
-    "wins": 1,
+    "wins": 3,
     "losses": 0,
-    "total": 1
+    "total": 3
   },
   "22": {
-    "wins": 2,
+    "wins": 4,
     "losses": 0,
-    "total": 2
+    "total": 4
   },
   "1": {
-    "wins": 1,
+    "wins": 2,
     "losses": 0,
-    "total": 1
+    "total": 2
   },
   "16": {
-    "wins": 1,
+    "wins": 5,
     "losses": 0,
-    "total": 1
+    "total": 5
   },
   "4": {
-    "wins": 0,
+    "wins": 1,
     "losses": 1,
-    "total": 1
+    "total": 2
   },
   "24": {
-    "wins": 1,
+    "wins": 2,
     "losses": 0,
-    "total": 1
+    "total": 2
   },
   "6": {
-    "wins": 1,
+    "wins": 4,
     "losses": 0,
-    "total": 1
+    "total": 4
   },
   "29": {
-    "wins": 2,
+    "wins": 5,
     "losses": 0,
-    "total": 2
+    "total": 5
   },
   "31": {
-    "wins": 1,
+    "wins": 4,
     "losses": 0,
-    "total": 1
+    "total": 4
   },
   "12": {
-    "wins": 1,
+    "wins": 3,
     "losses": 0,
-    "total": 1
+    "total": 3
   },
   "25": {
+    "wins": 3,
+    "losses": 0,
+    "total": 3
+  },
+  "26": {
+    "wins": 4,
+    "losses": 0,
+    "total": 4
+  },
+  "18": {
     "wins": 2,
     "losses": 0,
     "total": 2
+  },
+  "19": {
+    "wins": 1,
+    "losses": 0,
+    "total": 1
+  },
+  "23": {
+    "wins": 1,
+    "losses": 0,
+    "total": 1
   }
 }

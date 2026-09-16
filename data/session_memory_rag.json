@@ -483,5 +483,65 @@
     "session_text": "Sessão de roleta com 68 giros registrados. Terminais dominantes: T9(15%), T4(12%), T5(12%). Estratégias utilizadas: n/d. Win rate real observado: 100.0%.",
     "embedding": null,
     "embedding_model": null
+  },
+  {
+    "session_id": "161",
+    "terminals_freq": [
+      17,
+      7,
+      6,
+      14,
+      6,
+      7,
+      14,
+      6,
+      16,
+      7
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 70 giros.",
+    "session_text": "Sessão de roleta com 70 giros registrados. Terminais dominantes: T0(17%), T8(16%), T3(14%). Estratégias utilizadas: n/d. Win rate real observado: 100.0%.",
+    "embedding": null,
+    "embedding_model": null
+  },
+  {
+    "session_id": "163",
+    "terminals_freq": [
+      10,
+      14,
+      11,
+      11,
+      17,
+      10,
+      10,
+      9,
+      0,
+      7
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 70 giros.",
+    "session_text": "Sessão de roleta com 70 giros registrados. Terminais dominantes: T4(17%), T1(14%), T2(11%). Estratégias utilizadas: n/d. Win rate real observado: 100.0%.",
+    "embedding": null,
+    "embedding_model": null
+  },
+  {
+    "session_id": "165",
+    "terminals_freq": [
+      8,
+      6,
+      8,
+      7,
+      10,
+      18,
+      17,
+      10,
+      7,
+      10
+    ],
+    "avg_win_rate": 1.0,
+    "description": "Sessão real registrada com 72 giros.",
+    "session_text": "Sessão de roleta com 72 giros registrados. Terminais dominantes: T5(18%), T6(17%), T4(10%). Estratégias utilizadas: n/d. Win rate real observado: 100.0%.",
+    "embedding": null,
+    "embedding_model": null
   }
 ]
